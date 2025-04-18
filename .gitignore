@@ -21,8 +21,11 @@ Godeps/
 Thumbs.db
 
 # Build
-bin/
+bin/*
+tmp/
 dist/
+cmd/__debug_*
+cmd/server/__debug_*
 
 # Logs
 *.log
