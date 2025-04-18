@@ -14,14 +14,14 @@ import (
 
 // OCRHandler handles HTTP requests for OCR processing
 type OCRHandler struct {
-	ocrService *service.OCRService
+	ocrService  *service.OCRService
 	maxFileSize int64
 }
 
 // NewOCRHandler creates a new OCR handler
 func NewOCRHandler(ocrService *service.OCRService) *OCRHandler {
 	return &OCRHandler{
-		ocrService: ocrService,
+		ocrService:  ocrService,
 		maxFileSize: 10 * 1024 * 1024, // 10MB default
 	}
 }
