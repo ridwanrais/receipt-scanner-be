@@ -123,8 +123,6 @@ func isValidFileType(fileType string) bool {
 	fmt.Println("Debug: Checking file type:", fileType)
 	validTypes := map[string]bool{
 		"image/jpeg":      true,
-		"image/jpg":       true,
-		"image/pjpeg":     true, // Progressive JPEG
 		"image/png":       true,
 		"application/pdf": true,
 	}
