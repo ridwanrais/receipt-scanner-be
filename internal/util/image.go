@@ -9,6 +9,7 @@ import (
 	"image/png"
 	"math"
 	"os"
+	"strings"
 
 	"github.com/disintegration/imaging"
 )
@@ -57,8 +58,13 @@ func (p *ImageProcessor) PreprocessImage(imgData []byte) ([]byte, error) {
 
 	// Encode the processed image
 	var buf bytes.Buffer
+	
+	// Normalize format string to lowercase
+	format = strings.ToLower(format)
+	
+	// Handle different image formats
 	switch format {
-	case "jpeg":
+	case "jpeg", "jpg":
 		err = jpeg.Encode(&buf, binarizedImg, &jpeg.Options{Quality: 95})
 	case "png":
 		err = png.Encode(&buf, binarizedImg)

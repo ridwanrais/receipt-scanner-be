@@ -1,0 +1,31 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build:air",
+            "type": "shell",
+            "command": "go build -o ./tmp/server ./cmd/server/main.go",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$go",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "clean:air",
+            "type": "shell",
+            "command": "rm -f ./tmp/server",
+            "group": {
+                "kind": "build"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "never"
+            }
+        }
+    ]
+}

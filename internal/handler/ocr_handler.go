@@ -120,9 +120,12 @@ func (h *OCRHandler) ProcessInvoice(c *gin.Context) {
 
 // isValidFileType checks if the file type is supported
 func isValidFileType(fileType string) bool {
+	fmt.Println("Debug: Checking file type:", fileType)
 	validTypes := map[string]bool{
-		"image/jpeg": true,
-		"image/png":  true,
+		"image/jpeg":      true,
+		"image/jpg":       true,
+		"image/pjpeg":     true, // Progressive JPEG
+		"image/png":       true,
 		"application/pdf": true,
 	}
 	return validTypes[fileType]

@@ -1,0 +1,19 @@
+# Working directory
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# Build command using Go modules
+bin = "./tmp/server"
+cmd = "go build -o ./tmp/server ./cmd/server/main.go"
+
+[log]
+level = "info"
+
+[refresh]
+include_ext = ["go", "tmpl", "html", "css", "js"]
+
+[proxy]
+enabled = true
+proxy_port = 8090
+app_port = 8080

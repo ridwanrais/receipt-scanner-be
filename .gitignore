@@ -13,7 +13,6 @@ Godeps/
 
 # IDE
 .idea/
-.vscode/
 *.swp
 *.swo
 
