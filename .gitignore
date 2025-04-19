@@ -28,4 +28,7 @@ cmd/__debug_*
 cmd/server/__debug_*
 
 # Logs
-*.log
+*.loga
+
+# secrets
+.env

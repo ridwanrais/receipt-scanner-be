@@ -157,7 +157,7 @@ func (s *OCRService) parseInvoiceText(text string) (*model.Invoice, error) {
 	}
 
 	// Extract vendor name (usually at the top of the invoice)
-	invoice.Vendor = extractVendor(text)
+	invoice.VendorName = extractVendor(text)
 
 	// Extract invoice number
 	invoice.InvoiceNumber = extractInvoiceNumber(text)
@@ -170,12 +170,12 @@ func (s *OCRService) parseInvoiceText(text string) (*model.Invoice, error) {
 
 	// Extract totals
 	invoice.Subtotal = extractSubtotal(text)
-	invoice.Tax = extractTax(text)
-	invoice.Total = extractTotal(text)
+	invoice.TaxAmount = extractTax(text)
+	invoice.TotalDue = extractTotal(text)
 
 	// If total is not found, calculate it from subtotal and tax
-	if invoice.Total == 0 && invoice.Subtotal > 0 {
-		invoice.Total = invoice.Subtotal + invoice.Tax
+	if invoice.TotalDue == 0 && invoice.Subtotal > 0 {
+		invoice.TotalDue = invoice.Subtotal + invoice.TaxAmount
 	}
 
 	return invoice, nil

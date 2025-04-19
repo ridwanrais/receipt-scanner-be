@@ -2,20 +2,25 @@ package model
 
 // LineItem represents a single item in an invoice
 type LineItem struct {
-	Description string  `json:"description"`
-	Quantity    int     `json:"quantity"`
-	UnitPrice   float64 `json:"unit_price"`
+	Description string   `json:"description"`
+	Details     []string `json:"details"`
+	Quantity    int      `json:"quantity"`
+	UnitPrice   float64  `json:"unit_price"`
+	Total       float64  `json:"total"`
 }
 
 // Invoice represents the structured data extracted from an invoice image
 type Invoice struct {
-	Vendor        string     `json:"vendor"`
-	InvoiceNumber string     `json:"invoice_number"`
-	InvoiceDate   string     `json:"invoice_date"` // Format: YYYY-MM-DD
-	Items         []LineItem `json:"items"`
-	Subtotal      float64    `json:"subtotal"`
-	Tax           float64    `json:"tax"`
-	Total         float64    `json:"total"`
+	VendorName     string     `json:"vendor_name"`
+	InvoiceNumber  string     `json:"invoice_number"`
+	InvoiceDate    string     `json:"invoice_date"` // Format: YYYY-MM-DD
+	DueDate        string     `json:"due_date"`     // Format: YYYY-MM-DD
+	Items          []LineItem `json:"items"`
+	Subtotal       float64    `json:"subtotal"`
+	TaxRatePercent float64    `json:"tax_rate_percent"`
+	TaxAmount      float64    `json:"tax_amount"`
+	Discount       float64    `json:"discount"`
+	TotalDue       float64    `json:"total_due"`
 }
 
 // OCRRequest represents an incoming OCR request
