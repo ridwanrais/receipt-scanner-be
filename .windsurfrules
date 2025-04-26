@@ -1,0 +1,79 @@
+# .windsurfrules for Golang Project
+
+# General
+- All code must be formatted using 'gofmt' and organized with 'goimports'.
+- Linting must pass 'go vet' and 'staticcheck'.
+- Use Go Modules (go.mod) for dependency management.
+
+# Code Style
+- Functions must be named in camelCase.
+- Structs and interfaces must be PascalCase.
+- Interfaces describing behaviors should end with "er" (e.g., Reader, Writer).
+- Constants must use UPPER_SNAKE_CASE for globals, CamelCase for locals.
+
+# Documentation
+- All exported functions, structs, and interfaces must have comments.
+- Comments should be complete sentences starting with the name of the item.
+
+# Error Handling
+- Never panic in library code (only allowed in main() or tests).
+- Always return errors; wrap errors with additional context using fmt.Errorf.
+- Use errors.Is and errors.As when checking error types.
+
+# Project Structure
+- Follow this directory structure:
+    /cmd          → Main applications
+    /internal     → Private application code
+    /pkg          → Public libraries for other projects
+    /api          → API specifications (OpenAPI, Protobuf)
+    /configs      → Configuration files
+    /scripts      → Dev scripts and tooling
+    /deployments  → Deployment configs (Docker, Kubernetes)
+    /docs         → Project documentation
+
+# Architecture
+- Separate handlers (HTTP, gRPC), services (business logic), and repositories (data access).
+- Business logic should not depend on delivery mechanisms (like HTTP) or data sources (like SQL).
+- Define interfaces at the consumer side when possible.
+- Dependency inversion: Higher-level modules should not depend on lower-level modules.
+- No direct calls from handlers to repositories — always go through services.
+
+# Clean Architecture
+- Entities (core business models and logic) must not depend on any external code.
+- Use Cases (application-specific business rules) must orchestrate entities and implement business flow.
+- Interfaces (gateways, drivers) must be defined inwards (inside core packages) and implemented outwards (external adapters).
+- Frameworks and tools (HTTP servers, databases, UI, etc.) must be isolated at the outermost layer.
+- Dependency Rule: Source code dependencies must always point inward (higher level must not know lower level).
+- All communication between layers must happen via interfaces, DTOs (Data Transfer Objects), or simple structs.
+- Do not leak infrastructure-specific details (e.g., SQL models, HTTP models) into core layers.
+- Keep the core domain pure and testable without external dependencies.
+- Apply Dependency Injection explicitly, passing dependencies at construction time.
+- Prefer constructor functions (e.g., NewService(), NewRepository()) for instantiating structs.
+- Each layer must have clear responsibility and must not mix concerns (Single Responsibility Principle).
+
+# Testing
+- Table-driven tests are preferred.
+- Use mocks generated from interfaces.
+- Each Go file must have a corresponding _test.go file if it contains business logic.
+- Target minimum 80% test coverage.
+- Tests should not rely on global state or environment unless necessary (use dependency injection or test doubles).
+
+# Concurrency
+- Use goroutines and channels appropriately.
+- Avoid using sync.Mutex directly unless absolutely necessary.
+- Always handle context.Context correctly in concurrent operations.
+
+# Performance and Safety
+- Avoid reflection unless necessary.
+- Avoid global variables.
+- Optimize for readability before micro-optimizations.
+- Prefer immutable data structures where possible.
+
+# Additional Best Practices
+- No circular dependencies between packages.
+- Keep functions small (ideally under 50 lines).
+- Keep files manageable (ideally under 500 lines).
+- Group imports: standard library first, then third-party, then local.
+- Avoid deep nesting (prefer early returns).
+- Prefer composition over inheritance (embedding structs/interfaces).
+

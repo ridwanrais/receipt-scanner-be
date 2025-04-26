@@ -1,0 +1,23 @@
+# Working directory
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# Build command using Go modules
+bin = "./tmp/server"
+cmd = "go build -o ./tmp/server ./cmd/server/main.go"
+# Ensure the working directory is set to the project root
+full_bin = "cd . && ./tmp/server"
+
+[log]
+level = "info"
+
+[refresh]
+include_ext = ["go", "tmpl", "html", "css", "js"]
+# Also watch for changes in the .env file
+include_file = [".env"]
+
+[proxy]
+enabled = true
+proxy_port = 8090
+app_port = 8080
