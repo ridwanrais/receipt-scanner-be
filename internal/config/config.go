@@ -25,7 +25,7 @@ type Config struct {
 	SupabaseURL     string
 	SupabaseAPIKey  string
 	SupabaseBucket  string
-	SupabaseDBURL   string
+	PostgresDBURL   string
 
 	// Application configuration
 	MaxWorkers  int
@@ -52,7 +52,7 @@ func LoadConfig() (*Config, error) {
 		SupabaseURL:     os.Getenv("SUPABASE_URL"),
 		SupabaseAPIKey:  os.Getenv("SUPABASE_API_KEY"),
 		SupabaseBucket:  getEnvString("SUPABASE_BUCKET", "receipts"),
-		SupabaseDBURL:   os.Getenv("SUPABASE_DB_URL"),
+		PostgresDBURL:   os.Getenv("POSTGRES_DB_URL"),
 
 		MaxWorkers:  getEnvInt("MAX_WORKERS", 5),
 		APIBasePath: getEnvString("API_BASE_PATH", "/v1"),

@@ -53,28 +53,23 @@ func main() {
 	var receiptRepo repository.ReceiptRepository
 	var invoiceRepo repository.InvoiceRepository
 	
-	if cfg.SupabaseDBURL != "" {
-		log.Println("Initializing database connection...")
-		db, err = database.NewPostgresDB()
-		if err != nil {
-			log.Printf("Warning: Failed to connect to database: %v. Using in-memory repository instead.", err)
-		} else {
-			defer db.Close()
-			receiptRepo = repository.NewPostgresReceiptRepository(db.GetPool())
-			log.Println("Successfully connected to PostgreSQL database.")
-		}
+	// Require database connection - exit if not available
+	if cfg.PostgresDBURL == "" {
+		log.Fatalf("Error: PostgreSQL database URL not configured. Please set POSTGRES_DB_URL environment variable")
 	}
 	
-	// If database connection failed or no DB URL was provided, use in-memory repository
-	if receiptRepo == nil {
-		log.Println("Using Supabase storage repository without database persistence.")
-		supabaseRepo := repository.NewSupabaseRepository(openRouterClient)
-		receiptRepo = supabaseRepo
-		invoiceRepo = supabaseRepo // The SupabaseRepository implements both interfaces
-	} else {
-		// For now, use the SupabaseRepository for invoices until we fully migrate
-		invoiceRepo = repository.NewSupabaseRepository(openRouterClient)
+	log.Println("Initializing database connection...")
+	db, err = database.NewPostgresDB()
+	if err != nil {
+		log.Fatalf("Error: Failed to connect to database: %v", err)
 	}
+	
+	defer db.Close()
+	receiptRepo = repository.NewPostgresReceiptRepository(db.GetPool())
+	log.Println("Successfully connected to PostgreSQL database.")
+	
+	// For now, use the SupabaseRepository for invoices until we fully migrate
+	invoiceRepo = repository.NewSupabaseRepository(openRouterClient)
 
 	// Initialize services
 	log.Println("Initializing services...")
