@@ -72,7 +72,7 @@ func (s *Server) setupRoutes() {
 	// Health check endpoint
 	s.router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"status": "ok",
+			"status":         "ok",
 			"processor_type": "ai", // We're using AI processor exclusively in the new architecture
 		})
 	})

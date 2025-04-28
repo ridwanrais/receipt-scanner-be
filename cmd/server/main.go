@@ -52,29 +52,29 @@ func main() {
 	var db *database.PostgresDB
 	var receiptRepo repository.ReceiptRepository
 	var invoiceRepo repository.InvoiceRepository
-	
+
 	// Require database connection - exit if not available
 	if cfg.PostgresDBURL == "" {
 		log.Fatalf("Error: PostgreSQL database URL not configured. Please set POSTGRES_DB_URL environment variable")
 	}
-	
+
 	log.Println("Initializing database connection...")
 	db, err = database.NewPostgresDB()
 	if err != nil {
 		log.Fatalf("Error: Failed to connect to database: %v", err)
 	}
-	
+
 	defer db.Close()
 	receiptRepo = repository.NewPostgresReceiptRepository(db.GetPool())
 	log.Println("Successfully connected to PostgreSQL database.")
-	
+
 	// For now, use the SupabaseRepository for invoices until we fully migrate
 	invoiceRepo = repository.NewSupabaseRepository(openRouterClient)
 
 	// Initialize services
 	log.Println("Initializing services...")
 	receiptService := service.NewReceiptService(receiptRepo, openRouterClient, cfg.MaxWorkers)
-	
+
 	// For backward compatibility, create the AI processor service
 	processorService := service.NewAIProcessorService(openRouterClient, cfg.MaxWorkers)
 	processorService.SetRepository(invoiceRepo)
@@ -87,14 +87,14 @@ func main() {
 	// Create and configure server
 	log.Println("Configuring server...")
 	appServer := server.NewServer(cfg, invoiceHandler)
-	
+
 	// Set the receipt handler and service
 	appServer.SetReceiptHandler(receiptHandler)
 	appServer.SetReceiptService(receiptService)
-	
+
 	// Register receipt API routes
 	appServer.RegisterReceiptRoutes()
-	
+
 	// Set processor service in the server for clean shutdown
 	appServer.SetProcessorService(processorService)
 

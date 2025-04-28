@@ -12,10 +12,10 @@ import (
 type InvoiceProcessorServicer interface {
 	// ProcessInvoice processes an invoice image and returns the extracted data
 	ProcessInvoice(ctx context.Context, request *model.InvoiceProcessingRequest) (*model.InvoiceProcessingResponse, error)
-	
+
 	// SetRepository sets the repository for storing invoice data
 	SetRepository(repo repository.InvoiceRepository)
-	
+
 	// Shutdown gracefully shuts down the service
 	Shutdown()
 }
@@ -24,7 +24,7 @@ type InvoiceProcessorServicer interface {
 type InvoiceProcessingError struct {
 	// Op is the operation that failed
 	Op string
-	
+
 	// Err is the underlying error
 	Err error
 }

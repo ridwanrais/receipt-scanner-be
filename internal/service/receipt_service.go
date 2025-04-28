@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ridwanfathin/invoice-processor-service/internal/domain"
@@ -31,11 +32,11 @@ type ReceiptService interface {
 	GetReceiptByID(ctx context.Context, receiptID string) (*domain.Receipt, error)
 	UpdateReceipt(ctx context.Context, receipt *domain.Receipt) (*domain.Receipt, error)
 	DeleteReceipt(ctx context.Context, receiptID string) error
-	
+
 	// Query operations
 	ListReceipts(ctx context.Context, filter domain.ReceiptFilter) (*domain.PaginatedReceipts, error)
 	GetReceiptItems(ctx context.Context, receiptID string) ([]domain.ReceiptItem, error)
-	
+
 	// Dashboard and insights operations
 	GetDashboardSummary(ctx context.Context, startDate, endDate *string) (*domain.DashboardSummary, error)
 	GetSpendingTrends(ctx context.Context, period string, startDate, endDate *string) (*domain.SpendingTrends, error)
@@ -46,9 +47,9 @@ type ReceiptService interface {
 
 // ReceiptServiceImpl implements the ReceiptService interface
 type ReceiptServiceImpl struct {
-	repository    repository.ReceiptRepository
-	openAIClient  *openrouter.Client
-	workerPool    chan struct{}
+	repository   repository.ReceiptRepository
+	openAIClient *openrouter.Client
+	workerPool   chan struct{}
 }
 
 // NewReceiptService creates a new ReceiptService
@@ -89,23 +90,27 @@ func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte) 
 
 	// Convert domain.Invoice to domain.Receipt
 	receipt := &domain.Receipt{
-		Merchant: invoiceData.VendorName,
-		Date:     invoiceData.InvoiceDate,
-		Total:    invoiceData.TotalDue,
-		Tax:      invoiceData.TaxAmount,
-		Subtotal: invoiceData.Subtotal,
-		Items:    make([]domain.ReceiptItem, 0, len(invoiceData.Items)),
+		Merchant:  invoiceData.VendorName,
+		Date:      invoiceData.InvoiceDate,
+		Total:     invoiceData.TotalDue,
+		Tax:       invoiceData.TaxAmount,
+		Subtotal:  invoiceData.Subtotal,
+		Items:     make([]domain.ReceiptItem, 0, len(invoiceData.Items)),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
 
 	// Convert invoice items to receipt items
 	for _, item := range invoiceData.Items {
+		category := inferCategory(item.Description)
+		if item.Category != "" {
+			category = item.Category // prefer LLM if present
+		}
 		receiptItem := domain.ReceiptItem{
 			Name:     item.Description,
 			Quantity: int(item.Quantity), // Convert float64 to int
 			Price:    item.UnitPrice,
-			// Category will be inferred or set later
+			Category: category,
 		}
 		receipt.Items = append(receipt.Items, receiptItem)
 	}
@@ -120,6 +125,27 @@ func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte) 
 	}
 
 	return storedReceipt, nil
+}
+
+// inferCategory maps item descriptions to categories using keywords
+func inferCategory(description string) string {
+	desc := strings.ToLower(description)
+	switch {
+	case strings.Contains(desc, "taxi") || strings.Contains(desc, "uber") || strings.Contains(desc, "grab"):
+		return "Transport"
+	case strings.Contains(desc, "flight") || strings.Contains(desc, "airfare"):
+		return "Travel"
+	case strings.Contains(desc, "hotel") || strings.Contains(desc, "inn"):
+		return "Accommodation"
+	case strings.Contains(desc, "meal") || strings.Contains(desc, "food") || strings.Contains(desc, "restaurant"):
+		return "Food"
+	case strings.Contains(desc, "office") || strings.Contains(desc, "stationery"):
+		return "Office Supplies"
+	case strings.Contains(desc, "consult") || strings.Contains(desc, "service"):
+		return "Professional Services"
+	default:
+		return "Other"
+	}
 }
 
 // CreateReceipt saves a new receipt

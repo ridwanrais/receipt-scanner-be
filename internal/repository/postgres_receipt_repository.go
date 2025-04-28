@@ -137,7 +137,7 @@ func (r *PostgresReceiptRepository) UpdateReceipt(ctx context.Context, receipt *
 	if err != nil {
 		return nil, fmt.Errorf("failed to update receipt: %w", err)
 	}
-	
+
 	receipt.UpdatedAt = updatedAt
 
 	// Delete existing items

@@ -52,11 +52,11 @@ type PaginatedReceipts struct {
 
 // DashboardSummary represents summary data for the dashboard
 type DashboardSummary struct {
-	TotalSpend    float64             `json:"totalSpend"`
-	ReceiptCount  int                 `json:"receiptCount"`
-	AverageSpend  float64             `json:"averageSpend"`
-	TopCategories []CategorySummary   `json:"topCategories"`
-	TopMerchants  []MerchantSummary   `json:"topMerchants"`
+	TotalSpend    float64           `json:"totalSpend"`
+	ReceiptCount  int               `json:"receiptCount"`
+	AverageSpend  float64           `json:"averageSpend"`
+	TopCategories []CategorySummary `json:"topCategories"`
+	TopMerchants  []MerchantSummary `json:"topMerchants"`
 }
 
 // CategorySummary represents summary data for a spending category
@@ -93,9 +93,9 @@ type CategorySpending struct {
 
 // CategorySpendingItem represents spending data for a single category
 type CategorySpendingItem struct {
-	Name       string                    `json:"name"`
-	Amount     float64                   `json:"amount"`
-	Percentage float64                   `json:"percentage"`
+	Name       string                       `json:"name"`
+	Amount     float64                      `json:"amount"`
+	Percentage float64                      `json:"percentage"`
 	Items      []CategorySpendingItemDetail `json:"items"`
 }
 
@@ -123,20 +123,20 @@ type MerchantFrequencyDetail struct {
 
 // MonthlyComparison represents a comparison between two months
 type MonthlyComparison struct {
-	Month1          string                         `json:"month1"`
-	Month2          string                         `json:"month2"`
-	Month1Total     float64                        `json:"month1Total"`
-	Month2Total     float64                        `json:"month2Total"`
-	Difference      float64                        `json:"difference"`
-	PercentageChange float64                       `json:"percentageChange"`
-	Categories      []MonthlyCategoryComparison    `json:"categories"`
+	Month1           string                      `json:"month1"`
+	Month2           string                      `json:"month2"`
+	Month1Total      float64                     `json:"month1Total"`
+	Month2Total      float64                     `json:"month2Total"`
+	Difference       float64                     `json:"difference"`
+	PercentageChange float64                     `json:"percentageChange"`
+	Categories       []MonthlyCategoryComparison `json:"categories"`
 }
 
 // MonthlyCategoryComparison represents a comparison between two months for a specific category
 type MonthlyCategoryComparison struct {
-	Name            string  `json:"name"`
-	Month1Amount    float64 `json:"month1Amount"`
-	Month2Amount    float64 `json:"month2Amount"`
-	Difference      float64 `json:"difference"`
+	Name             string  `json:"name"`
+	Month1Amount     float64 `json:"month1Amount"`
+	Month2Amount     float64 `json:"month2Amount"`
+	Difference       float64 `json:"difference"`
 	PercentageChange float64 `json:"percentageChange"`
 }

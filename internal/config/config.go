@@ -22,10 +22,10 @@ type Config struct {
 	OpenRouterTimeout time.Duration
 
 	// Supabase configuration
-	SupabaseURL     string
-	SupabaseAPIKey  string
-	SupabaseBucket  string
-	PostgresDBURL   string
+	SupabaseURL    string
+	SupabaseAPIKey string
+	SupabaseBucket string
+	PostgresDBURL  string
 
 	// Application configuration
 	MaxWorkers  int
@@ -49,10 +49,10 @@ func LoadConfig() (*Config, error) {
 		OpenRouterModelID: getEnvString("OPENROUTER_MODEL_ID", "mistralai/mistral-7b-instruct"),
 		OpenRouterTimeout: time.Duration(getEnvInt("OPENROUTER_TIMEOUT", 60)) * time.Second,
 
-		SupabaseURL:     os.Getenv("SUPABASE_URL"),
-		SupabaseAPIKey:  os.Getenv("SUPABASE_API_KEY"),
-		SupabaseBucket:  getEnvString("SUPABASE_BUCKET", "receipts"),
-		PostgresDBURL:   os.Getenv("POSTGRES_DB_URL"),
+		SupabaseURL:    os.Getenv("SUPABASE_URL"),
+		SupabaseAPIKey: os.Getenv("SUPABASE_API_KEY"),
+		SupabaseBucket: getEnvString("SUPABASE_BUCKET", "receipts"),
+		PostgresDBURL:  os.Getenv("POSTGRES_DB_URL"),
 
 		MaxWorkers:  getEnvInt("MAX_WORKERS", 5),
 		APIBasePath: getEnvString("API_BASE_PATH", "/v1"),

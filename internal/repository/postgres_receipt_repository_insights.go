@@ -13,7 +13,7 @@ import (
 func (r *PostgresReceiptRepository) GetDashboardSummary(ctx context.Context, startDateStr, endDateStr *string) (*domain.DashboardSummary, error) {
 	// Parse date strings if provided
 	var startDate, endDate *time.Time
-	
+
 	if startDateStr != nil {
 		parsedDate, err := time.Parse("2006-01-02", *startDateStr)
 		if err != nil {
@@ -21,7 +21,7 @@ func (r *PostgresReceiptRepository) GetDashboardSummary(ctx context.Context, sta
 		}
 		startDate = &parsedDate
 	}
-	
+
 	if endDateStr != nil {
 		parsedDate, err := time.Parse("2006-01-02", *endDateStr)
 		if err != nil {
@@ -77,7 +77,7 @@ func (r *PostgresReceiptRepository) GetDashboardSummary(ctx context.Context, sta
 	// Get top categories
 	categoryArgs := make([]interface{}, len(args))
 	copy(categoryArgs, args)
-	
+
 	categoryRows, err := r.db.Query(ctx, fmt.Sprintf(`
 		SELECT 
 			ri.category, 
@@ -111,7 +111,7 @@ func (r *PostgresReceiptRepository) GetDashboardSummary(ctx context.Context, sta
 	// Get top merchants
 	merchantArgs := make([]interface{}, len(args))
 	copy(merchantArgs, args)
-	
+
 	merchantRows, err := r.db.Query(ctx, fmt.Sprintf(`
 		SELECT 
 			r.merchant, 
@@ -274,7 +274,7 @@ func (r *PostgresReceiptRepository) GetSpendingByCategory(ctx context.Context, s
 		FROM receipts
 		%s
 	`, whereClause)
-	
+
 	err := r.db.QueryRow(ctx, totalQuery).Scan(&result.Total)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total spending: %w", err)
@@ -317,10 +317,10 @@ func (r *PostgresReceiptRepository) GetSpendingByCategory(ctx context.Context, s
 
 		// Initialize items slice
 		category.Items = []domain.CategorySpendingItemDetail{}
-		
+
 		// Store the index for later updating
 		categoryIndices[category.Name] = len(result.Categories)
-		
+
 		// Add to results
 		result.Categories = append(result.Categories, category)
 	}
@@ -417,7 +417,7 @@ func (r *PostgresReceiptRepository) GetMerchantFrequency(ctx context.Context, st
 		FROM receipts
 		%s
 	`, whereClause)
-	
+
 	err := r.db.QueryRow(ctx, visitQuery).Scan(&result.TotalVisits)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total visits: %w", err)
@@ -568,16 +568,16 @@ func (r *PostgresReceiptRepository) GetMonthlyComparison(ctx context.Context, mo
 		if err := rows.Scan(&category.Name, &category.Month1Amount, &category.Month2Amount); err != nil {
 			return nil, fmt.Errorf("failed to scan category comparison: %w", err)
 		}
-		
+
 		// Calculate difference and percentage change
 		category.Difference = category.Month2Amount - category.Month1Amount
-		
+
 		if category.Month1Amount > 0 {
 			category.PercentageChange = (category.Difference / category.Month1Amount) * 100
 		} else if category.Month2Amount > 0 {
 			category.PercentageChange = 100 // If month1 is zero and month2 is positive, 100% increase
 		}
-		
+
 		result.Categories = append(result.Categories, category)
 	}
 

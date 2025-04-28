@@ -152,7 +152,7 @@ func (r *SupabaseRepository) CreateReceipt(ctx context.Context, receipt *domain.
 		// Generate an ID if not provided
 		receipt.ID = fmt.Sprintf("receipt-%d", time.Now().UnixNano())
 	}
-	
+
 	// Store in memory cache
 	r.receiptCache[receipt.ID] = receipt
 
@@ -295,7 +295,7 @@ func (r *SupabaseRepository) ListReceipts(ctx context.Context, filter domain.Rec
 	// Calculate pagination
 	totalItems := len(filteredReceipts)
 	totalPages := (totalItems + filter.Limit - 1) / filter.Limit // Ceiling division
-	
+
 	// Determine current page items
 	startIdx := (filter.Page - 1) * filter.Limit
 	endIdx := startIdx + filter.Limit

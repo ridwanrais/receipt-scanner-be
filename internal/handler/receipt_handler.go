@@ -393,7 +393,7 @@ func (h *ReceiptHandler) GetSpendingByCategory(c *gin.Context) {
 func (h *ReceiptHandler) GetMerchantFrequency(c *gin.Context) {
 	// Parse query parameters
 	startDate, endDate := parseDateRange(c)
-	
+
 	// Parse limit
 	limitStr := c.DefaultQuery("limit", "10")
 	limit, err := strconv.Atoi(limitStr)
@@ -718,10 +718,10 @@ func formatMonthlyComparisonResponse(comparison *domain.MonthlyComparison) gin.H
 	categories := make([]gin.H, len(comparison.Categories))
 	for i, category := range comparison.Categories {
 		categories[i] = gin.H{
-			"name":            category.Name,
-			"month1Amount":    fmt.Sprintf("%.2f", category.Month1Amount),
-			"month2Amount":    fmt.Sprintf("%.2f", category.Month2Amount),
-			"difference":      fmt.Sprintf("%.2f", category.Difference),
+			"name":             category.Name,
+			"month1Amount":     fmt.Sprintf("%.2f", category.Month1Amount),
+			"month2Amount":     fmt.Sprintf("%.2f", category.Month2Amount),
+			"difference":       fmt.Sprintf("%.2f", category.Difference),
 			"percentageChange": category.PercentageChange,
 		}
 	}

@@ -13,11 +13,11 @@ type ReceiptRepository interface {
 	GetReceiptByID(ctx context.Context, receiptID string) (*domain.Receipt, error)
 	UpdateReceipt(ctx context.Context, receipt *domain.Receipt) (*domain.Receipt, error)
 	DeleteReceipt(ctx context.Context, receiptID string) error
-	
+
 	// Receipt querying operations
 	ListReceipts(ctx context.Context, filter domain.ReceiptFilter) (*domain.PaginatedReceipts, error)
 	GetReceiptItems(ctx context.Context, receiptID string) ([]domain.ReceiptItem, error)
-	
+
 	// Dashboard and insights operations
 	GetDashboardSummary(ctx context.Context, startDate, endDate *string) (*domain.DashboardSummary, error)
 	GetSpendingTrends(ctx context.Context, period string, startDate, endDate *string) (*domain.SpendingTrends, error)

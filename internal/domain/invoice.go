@@ -9,6 +9,7 @@ type LineItem struct {
 	Quantity    float64
 	UnitPrice   float64
 	Total       float64
+	Category    string // Added for LLM and Go mapping
 }
 
 // Invoice represents the core domain entity for an invoice
