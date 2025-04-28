@@ -16,7 +16,7 @@ import (
 type RepositoryError struct {
 	// Op is the operation that failed
 	Op string
-	
+
 	// Err is the underlying error
 	Err error
 }
@@ -77,7 +77,7 @@ func (r *FileRepository) StoreImage(ctx context.Context, imageData []byte) (stri
 
 	// Generate unique identifier based on timestamp
 	imageID := fmt.Sprintf("%d", time.Now().UnixNano())
-	
+
 	// Write image to file
 	filePath := filepath.Join(r.baseDir, "images", imageID)
 	if err := os.WriteFile(filePath, imageData, 0644); err != nil {

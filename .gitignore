@@ -26,7 +26,6 @@ go.work
 
 # IDE specific files
 .idea/
-.vscode/
 
 # OS specific files
 .DS_Store

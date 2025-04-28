@@ -13,6 +13,7 @@ type LineItemDTO struct {
 	Quantity    float64  `json:"quantity"`
 	UnitPrice   float64  `json:"unit_price"`
 	Total       float64  `json:"total"`
+	Category    string   `json:"category"`
 }
 
 // InvoiceDTO represents the structured data extracted from an invoice image for data transfer
@@ -61,6 +62,7 @@ func (dto *InvoiceDTO) FromDomain(invoice *domain.Invoice) {
 			Quantity:    item.Quantity,
 			UnitPrice:   item.UnitPrice,
 			Total:       item.Total,
+			Category:    item.Category,
 		}
 	}
 }
@@ -103,6 +105,7 @@ func (dto *InvoiceDTO) ToDomain() (*domain.Invoice, error) {
 			Quantity:    item.Quantity,
 			UnitPrice:   item.UnitPrice,
 			Total:       item.Total,
+			Category:    item.Category,
 		}
 	}
 

@@ -89,7 +89,7 @@ func (h *InvoiceHandler) ProcessInvoice(c *gin.Context) {
 			})
 			return
 		}
-		
+
 		// Otherwise, it's an internal server error
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

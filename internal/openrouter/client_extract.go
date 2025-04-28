@@ -20,25 +20,25 @@ func (c *Client) ExtractInvoiceData(imageData []byte) (*domain.Invoice, error) {
 			Err: fmt.Errorf("Supabase URL is not configured. Please set SUPABASE_URL environment variable"),
 		}
 	}
-	
+
 	if c.supabaseAPIKey == "" {
 		return nil, &OpenRouterError{
 			Op:  "validate_configuration",
 			Err: fmt.Errorf("Supabase API key is not configured. Please set SUPABASE_API_KEY environment variable"),
 		}
 	}
-	
+
 	if c.apiKey == "" {
 		return nil, &OpenRouterError{
 			Op:  "validate_configuration",
 			Err: fmt.Errorf("OpenRouter API key is not configured. Please set OPENROUTER_API_KEY environment variable"),
 		}
 	}
-	
+
 	// Generate a unique filename
 	timestamp := time.Now().UnixNano()
 	filename := fmt.Sprintf("invoice_%d.png", timestamp)
-	
+
 	// Upload the image to Supabase
 	imageURL, err := c.UploadImageToSupabase(imageData, filename)
 	if err != nil {
@@ -47,23 +47,23 @@ func (c *Client) ExtractInvoiceData(imageData []byte) (*domain.Invoice, error) {
 			Err: fmt.Errorf("failed to upload image to Supabase: %w", err),
 		}
 	}
-	
+
 	// Create the OpenRouter API request payload
 	type Message struct {
 		Role    string        `json:"role"`
 		Content []interface{} `json:"content"`
 	}
-	
+
 	type ImageURL struct {
 		URL string `json:"url"`
 	}
-	
+
 	type Content struct {
 		Type     string    `json:"type"`
 		Text     string    `json:"text,omitempty"`
 		ImageURL *ImageURL `json:"image_url,omitempty"`
 	}
-	
+
 	// Create the system prompt
 	systemContent := Content{
 		Type: "text",
@@ -72,7 +72,7 @@ func (c *Client) ExtractInvoiceData(imageData []byte) (*domain.Invoice, error) {
 - Invoice number
 - Invoice date (in YYYY-MM-DD format)
 - Due date (in YYYY-MM-DD format)
-- Line items (including description, details, quantity, unit price, and total for each)
+- Line items (including description, details, quantity, unit price, total, and category for each)
 - Subtotal
 - Tax rate percentage
 - Tax amount
@@ -91,7 +91,8 @@ Format your response as a valid JSON object with the following structure:
       "details": ["...", "..."],
       "quantity": 0.0,
       "unit_price": 0.0,
-      "total": 0.0
+      "total": 0.0,
+      "category": "..."
     }
   ],
   "subtotal": 0.0,
@@ -101,9 +102,11 @@ Format your response as a valid JSON object with the following structure:
   "total_due": 0.0
 }
 
+For each line item, if you can infer the category (e.g. "Food", "Office Supplies", "Travel", etc.) from the description, provide it. If not, leave it as an empty string "".
+
 Do not include any other text in your response, only provide the JSON.`,
 	}
-	
+
 	// Create the user message with the image
 	userContent := []Content{
 		{
@@ -115,13 +118,13 @@ Do not include any other text in your response, only provide the JSON.`,
 			ImageURL: &ImageURL{URL: imageURL},
 		},
 	}
-	
+
 	// Convert userContent to []interface{}
 	var userContentInterface []interface{}
 	for _, item := range userContent {
 		userContentInterface = append(userContentInterface, item)
 	}
-	
+
 	// Create the request payload
 	requestPayload := map[string]interface{}{
 		"model": c.modelID,
@@ -136,7 +139,7 @@ Do not include any other text in your response, only provide the JSON.`,
 			},
 		},
 	}
-	
+
 	// Convert the request payload to JSON
 	requestData, err := json.Marshal(requestPayload)
 	if err != nil {
@@ -145,7 +148,7 @@ Do not include any other text in your response, only provide the JSON.`,
 			Err: fmt.Errorf("failed to marshal request payload: %w", err),
 		}
 	}
-	
+
 	// Create the HTTP request
 	req, err := http.NewRequest("POST", c.apiURL, bytes.NewBuffer(requestData))
 	if err != nil {
@@ -154,12 +157,12 @@ Do not include any other text in your response, only provide the JSON.`,
 			Err: fmt.Errorf("failed to create request: %w", err),
 		}
 	}
-	
+
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("HTTP-Referer", "https://github.com/ridwanfathin/invoice-processor-service")
-	
+
 	// Send the request
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -169,7 +172,7 @@ Do not include any other text in your response, only provide the JSON.`,
 		}
 	}
 	defer resp.Body.Close()
-	
+
 	// Read the response body
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -178,7 +181,7 @@ Do not include any other text in your response, only provide the JSON.`,
 			Err: fmt.Errorf("failed to read response body: %w", err),
 		}
 	}
-	
+
 	// Check for error status code
 	if resp.StatusCode != http.StatusOK {
 		return nil, &OpenRouterError{
@@ -186,7 +189,7 @@ Do not include any other text in your response, only provide the JSON.`,
 			Err: fmt.Errorf("API error: %s - %s", resp.Status, string(respBody)),
 		}
 	}
-	
+
 	// Parse the response and extract the invoice data
 	return c.parseOpenRouterResponse(respBody)
 }

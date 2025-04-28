@@ -22,7 +22,9 @@ type Server struct {
 	router         *gin.Engine
 	httpServer     *http.Server
 	invoiceHandler *handler.InvoiceHandler
+	receiptHandler *handler.ReceiptHandler
 	processor      service.InvoiceProcessorServicer
+	receiptService service.ReceiptService
 	config         *config.Config
 }
 
@@ -52,6 +54,16 @@ func NewServer(cfg *config.Config, invoiceHandler *handler.InvoiceHandler) *Serv
 	return server
 }
 
+// SetReceiptHandler sets the receipt handler for the server
+func (s *Server) SetReceiptHandler(receiptHandler *handler.ReceiptHandler) {
+	s.receiptHandler = receiptHandler
+}
+
+// SetReceiptService sets the receipt service for the server
+func (s *Server) SetReceiptService(receiptService service.ReceiptService) {
+	s.receiptService = receiptService
+}
+
 // setupRoutes configures all application routes
 func (s *Server) setupRoutes() {
 	// Register invoice processing routes with the provided handler
@@ -60,10 +72,20 @@ func (s *Server) setupRoutes() {
 	// Health check endpoint
 	s.router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"status": "ok",
+			"status":         "ok",
 			"processor_type": "ai", // We're using AI processor exclusively in the new architecture
 		})
 	})
+}
+
+// RegisterReceiptRoutes registers the receipt API routes
+// This must be called after SetReceiptHandler
+func (s *Server) RegisterReceiptRoutes() {
+	if s.receiptHandler == nil {
+		log.Println("Warning: Receipt handler is nil, skipping receipt routes registration")
+		return
+	}
+	s.receiptHandler.RegisterRoutes(s.router)
 }
 
 // Start begins listening for requests and handles graceful shutdown
@@ -100,6 +122,25 @@ func (s *Server) Start() error {
 
 	log.Println("Server exited gracefully")
 	return nil
+}
+
+// Shutdown gracefully stops the server
+func (s *Server) Shutdown() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Shutdown processor service if available
+	if s.processor != nil {
+		s.processor.Shutdown()
+	}
+
+	// Shutdown receipt service if available (if it implements a shutdown method)
+	if shutdownable, ok := s.receiptService.(interface{ Shutdown() }); ok {
+		shutdownable.Shutdown()
+	}
+
+	// Shutdown server
+	return s.httpServer.Shutdown(ctx)
 }
 
 // SetProcessorService sets the invoice processor service reference for shutdown purposes
