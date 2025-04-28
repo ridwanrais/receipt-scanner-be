@@ -13,7 +13,6 @@ import (
 func (r *PostgresReceiptRepository) GetDashboardSummary(ctx context.Context, startDateStr, endDateStr *string) (*domain.DashboardSummary, error) {
 	// Parse date strings if provided
 	var startDate, endDate *time.Time
-	var err error
 	
 	if startDateStr != nil {
 		parsedDate, err := time.Parse("2006-01-02", *startDateStr)
@@ -37,12 +36,12 @@ func (r *PostgresReceiptRepository) GetDashboardSummary(ctx context.Context, sta
 	argCount := 1
 
 	if startDate != nil {
-		conditions = append(conditions, fmt.Sprintf("r.date >= $%d", argCount))
+		conditions = append(conditions, fmt.Sprintf("r.date >= $%d::date", argCount))
 		args = append(args, startDate)
 		argCount++
 	}
 	if endDate != nil {
-		conditions = append(conditions, fmt.Sprintf("r.date <= $%d", argCount))
+		conditions = append(conditions, fmt.Sprintf("r.date <= $%d::date", argCount))
 		args = append(args, endDate)
 		argCount++
 	}
@@ -59,7 +58,7 @@ func (r *PostgresReceiptRepository) GetDashboardSummary(ctx context.Context, sta
 	}
 
 	// Get total spend, receipt count, and average spend
-	err = r.db.QueryRow(ctx, fmt.Sprintf(`
+	err := r.db.QueryRow(ctx, fmt.Sprintf(`
 		SELECT 
 			COALESCE(SUM(total), 0) as total_spend,
 			COUNT(*) as receipt_count
@@ -146,98 +145,86 @@ func (r *PostgresReceiptRepository) GetDashboardSummary(ctx context.Context, sta
 
 // GetSpendingTrends retrieves spending trends over time
 func (r *PostgresReceiptRepository) GetSpendingTrends(ctx context.Context, period string, startDateStr, endDateStr *string) (*domain.SpendingTrends, error) {
-	// Parse date strings if provided
-	var startDate, endDate *time.Time
-	
-	if startDateStr != nil {
-		parsedDate, err := time.Parse("2006-01-02", *startDateStr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid start date format: %w", err)
-		}
-		startDate = &parsedDate
-	}
-	
-	if endDateStr != nil {
-		parsedDate, err := time.Parse("2006-01-02", *endDateStr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid end date format: %w", err)
-		}
-		endDate = &parsedDate
+	// Create the result object
+	trends := &domain.SpendingTrends{
+		Period: period,
+		Data:   []domain.SpendingTrendDataItem{},
 	}
 
 	// Validate period
-	if period == "" {
-		period = "monthly" // Default
-	}
-	
 	validPeriods := map[string]bool{
 		"daily":   true,
 		"weekly":  true,
 		"monthly": true,
 		"yearly":  true,
 	}
-	
 	if !validPeriods[period] {
 		return nil, fmt.Errorf("invalid period: %s", period)
 	}
 
-	// Build query conditions for date filtering
-	conditions := []string{}
-	args := []interface{}{}
-	argCount := 1
-
-	if startDate != nil {
-		conditions = append(conditions, fmt.Sprintf("date >= $%d", argCount))
-		args = append(args, startDate)
-		argCount++
-	}
-	if endDate != nil {
-		conditions = append(conditions, fmt.Sprintf("date <= $%d", argCount))
-		args = append(args, endDate)
-		argCount++
-	}
-
+	// Build WHERE clause with literal date strings
 	whereClause := ""
-	if len(conditions) > 0 {
-		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	if startDateStr != nil && endDateStr != nil {
+		whereClause = fmt.Sprintf("WHERE date >= '%s'::date AND date <= '%s'::date", *startDateStr, *endDateStr)
+	} else if startDateStr != nil {
+		whereClause = fmt.Sprintf("WHERE date >= '%s'::date", *startDateStr)
+	} else if endDateStr != nil {
+		whereClause = fmt.Sprintf("WHERE date <= '%s'::date", *endDateStr)
 	}
 
-	// Define date grouping based on period
-	var dateGrouping string
+	// Use different queries based on period to avoid TO_CHAR conversion issues
+	var query string
 	switch period {
 	case "daily":
-		dateGrouping = "DATE(date)"
+		query = fmt.Sprintf(`
+			SELECT 
+				TO_CHAR(date, 'YYYY-MM-DD') as date,
+				COALESCE(SUM(total), 0) as amount
+			FROM receipts
+			%s
+			GROUP BY date
+			ORDER BY date
+		`, whereClause)
 	case "weekly":
-		dateGrouping = "TO_CHAR(date, 'YYYY-WW')"
+		query = fmt.Sprintf(`
+			SELECT 
+				TO_CHAR(date, 'YYYY-"W"IW') as date,
+				COALESCE(SUM(total), 0) as amount
+			FROM receipts
+			%s
+			GROUP BY TO_CHAR(date, 'YYYY-"W"IW'), date
+			ORDER BY MIN(date)
+		`, whereClause)
 	case "monthly":
-		dateGrouping = "TO_CHAR(date, 'YYYY-MM')"
+		query = fmt.Sprintf(`
+			SELECT 
+				TO_CHAR(date, 'YYYY-MM') as date,
+				COALESCE(SUM(total), 0) as amount
+			FROM receipts
+			%s
+			GROUP BY TO_CHAR(date, 'YYYY-MM'), date
+			ORDER BY MIN(date)
+		`, whereClause)
 	case "yearly":
-		dateGrouping = "TO_CHAR(date, 'YYYY')"
+		query = fmt.Sprintf(`
+			SELECT 
+				TO_CHAR(date, 'YYYY') as date,
+				COALESCE(SUM(total), 0) as amount
+			FROM receipts
+			%s
+			GROUP BY TO_CHAR(date, 'YYYY'), date
+			ORDER BY MIN(date)
+		`, whereClause)
 	}
 
-	// Query spending trends
-	query := fmt.Sprintf(`
-		SELECT
-			%s as period_date,
-			COALESCE(SUM(total), 0) as amount
-		FROM receipts
-		%s
-		GROUP BY period_date
-		ORDER BY period_date
-	`, dateGrouping, whereClause)
-
-	rows, err := r.db.Query(ctx, query, args...)
+	// Execute the query
+	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query spending trends: %w", err)
 	}
 	defer rows.Close()
 
-	// Parse results
-	trends := &domain.SpendingTrends{
-		Period: period,
-		Data:   []domain.SpendingTrendDataItem{},
-	}
-
+	// Process results
 	for rows.Next() {
 		var item domain.SpendingTrendDataItem
 		if err := rows.Scan(&item.Date, &item.Amount); err != nil {
@@ -255,93 +242,86 @@ func (r *PostgresReceiptRepository) GetSpendingTrends(ctx context.Context, perio
 
 // GetSpendingByCategory retrieves spending breakdown by category
 func (r *PostgresReceiptRepository) GetSpendingByCategory(ctx context.Context, startDateStr, endDateStr *string) (*domain.CategorySpending, error) {
-	// Parse date strings if provided
-	var startDate, endDate *time.Time
-	
-	if startDateStr != nil {
-		parsedDate, err := time.Parse("2006-01-02", *startDateStr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid start date format: %w", err)
-		}
-		startDate = &parsedDate
-	}
-	
-	if endDateStr != nil {
-		parsedDate, err := time.Parse("2006-01-02", *endDateStr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid end date format: %w", err)
-		}
-		endDate = &parsedDate
+	// Initialize result
+	result := &domain.CategorySpending{
+		Total:      0,
+		Categories: []domain.CategorySpendingItem{},
 	}
 
-	// Build query conditions for date filtering
-	conditions := []string{}
-	args := []interface{}{}
-	argCount := 1
-
-	if startDate != nil {
-		conditions = append(conditions, fmt.Sprintf("r.date >= $%d", argCount))
-		args = append(args, startDate)
-		argCount++
-	}
-	if endDate != nil {
-		conditions = append(conditions, fmt.Sprintf("r.date <= $%d", argCount))
-		args = append(args, endDate)
-		argCount++
-	}
-
+	// Build WHERE clause with literal date strings
 	whereClause := ""
-	if len(conditions) > 0 {
-		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	if startDateStr != nil && endDateStr != nil {
+		whereClause = fmt.Sprintf("WHERE date >= '%s'::date AND date <= '%s'::date", *startDateStr, *endDateStr)
+	} else if startDateStr != nil {
+		whereClause = fmt.Sprintf("WHERE date >= '%s'::date", *startDateStr)
+	} else if endDateStr != nil {
+		whereClause = fmt.Sprintf("WHERE date <= '%s'::date", *endDateStr)
+	}
+
+	// Build receipt WHERE clause for joining with receipt_items
+	receiptWhereClause := ""
+	if startDateStr != nil && endDateStr != nil {
+		receiptWhereClause = fmt.Sprintf("WHERE r.date >= '%s'::date AND r.date <= '%s'::date", *startDateStr, *endDateStr)
+	} else if startDateStr != nil {
+		receiptWhereClause = fmt.Sprintf("WHERE r.date >= '%s'::date", *startDateStr)
+	} else if endDateStr != nil {
+		receiptWhereClause = fmt.Sprintf("WHERE r.date <= '%s'::date", *endDateStr)
 	}
 
 	// Get total spending
-	var totalSpend float64
-	err := r.db.QueryRow(ctx, fmt.Sprintf(`
-		SELECT COALESCE(SUM(total), 0) FROM receipts r %s
-	`, whereClause), args...).Scan(&totalSpend)
+	totalQuery := fmt.Sprintf(`
+		SELECT COALESCE(SUM(total), 0) 
+		FROM receipts
+		%s
+	`, whereClause)
+	
+	err := r.db.QueryRow(ctx, totalQuery).Scan(&result.Total)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total spending: %w", err)
 	}
 
-	// Initialize result
-	result := &domain.CategorySpending{
-		Total:      totalSpend,
-		Categories: []domain.CategorySpendingItem{},
-	}
-
 	// Get spending by category
-	categoryArgs := make([]interface{}, len(args))
-	copy(categoryArgs, args)
-	
-	categoryRows, err := r.db.Query(ctx, fmt.Sprintf(`
-		SELECT
-			ri.category,
-			COALESCE(SUM(ri.qty * ri.price), 0) as amount,
-			COALESCE(SUM(ri.qty * ri.price) / NULLIF($%d, 0) * 100, 0) as percentage
+	categoryQuery := fmt.Sprintf(`
+		SELECT 
+			COALESCE(ri.category, 'Uncategorized') as name, 
+			COALESCE(SUM(ri.qty * ri.price), 0) as amount
 		FROM receipt_items ri
 		JOIN receipts r ON ri.receipt_id = r.id
 		%s
 		GROUP BY ri.category
-		HAVING ri.category IS NOT NULL
 		ORDER BY amount DESC
-	`, argCount+1, whereClause), append(categoryArgs, totalSpend)...)
+	`, receiptWhereClause)
+
+	categoryRows, err := r.db.Query(ctx, categoryQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query spending by category: %w", err)
 	}
 	defer categoryRows.Close()
 
-	// Map to keep track of categories for later item detail queries
-	categoryMap := make(map[string]*domain.CategorySpendingItem)
+	// Map to store category indices for later updating
+	categoryIndices := make(map[string]int)
 
-	// Parse category results
+	// Process categories
 	for categoryRows.Next() {
 		var category domain.CategorySpendingItem
-		if err := categoryRows.Scan(&category.Name, &category.Amount, &category.Percentage); err != nil {
+		if err := categoryRows.Scan(&category.Name, &category.Amount); err != nil {
 			return nil, fmt.Errorf("failed to scan category: %w", err)
 		}
+
+		// Calculate percentage
+		if result.Total > 0 {
+			category.Percentage = (category.Amount / result.Total) * 100
+		} else {
+			category.Percentage = 0
+		}
+
+		// Initialize items slice
 		category.Items = []domain.CategorySpendingItemDetail{}
-		categoryMap[category.Name] = &category
+		
+		// Store the index for later updating
+		categoryIndices[category.Name] = len(result.Categories)
+		
+		// Add to results
 		result.Categories = append(result.Categories, category)
 	}
 
@@ -349,52 +329,56 @@ func (r *PostgresReceiptRepository) GetSpendingByCategory(ctx context.Context, s
 		return nil, fmt.Errorf("error iterating categories: %w", err)
 	}
 
-	// For each category, get the top items
+	// For each category, get top items
 	for _, category := range result.Categories {
-		itemArgs := make([]interface{}, len(args))
-		copy(itemArgs, args)
-		itemArgs = append(itemArgs, category.Name)
+		itemQuery := ""
+		if receiptWhereClause == "" {
+			itemQuery = fmt.Sprintf(`
+				SELECT 
+					ri.name, 
+					COALESCE(SUM(ri.qty * ri.price), 0) as total_spent, 
+					COUNT(*) as count
+				FROM receipt_items ri
+				JOIN receipts r ON ri.receipt_id = r.id
+				WHERE ri.category = '%s' OR (ri.category IS NULL AND '%s' = 'Uncategorized')
+				GROUP BY ri.name
+				ORDER BY total_spent DESC
+				LIMIT 10
+			`, category.Name, category.Name)
+		} else {
+			itemQuery = fmt.Sprintf(`
+				SELECT 
+					ri.name, 
+					COALESCE(SUM(ri.qty * ri.price), 0) as total_spent, 
+					COUNT(*) as count
+				FROM receipt_items ri
+				JOIN receipts r ON ri.receipt_id = r.id
+				%s AND (ri.category = '%s' OR (ri.category IS NULL AND '%s' = 'Uncategorized'))
+				GROUP BY ri.name
+				ORDER BY total_spent DESC
+				LIMIT 10
+			`, receiptWhereClause, category.Name, category.Name)
+		}
 
-		itemQuery := fmt.Sprintf(`
-			SELECT
-				ri.name,
-				COALESCE(SUM(ri.qty * ri.price), 0) as total_spent,
-				COUNT(*) as count
-			FROM receipt_items ri
-			JOIN receipts r ON ri.receipt_id = r.id
-			%s
-			AND ri.category = $%d
-			GROUP BY ri.name
-			ORDER BY total_spent DESC
-			LIMIT 5
-		`, whereClause, argCount+1)
-
-		itemRows, err := r.db.Query(ctx, itemQuery, itemArgs...)
+		itemRows, err := r.db.Query(ctx, itemQuery)
 		if err != nil {
 			return nil, fmt.Errorf("failed to query category items: %w", err)
 		}
 
+		var items []domain.CategorySpendingItemDetail
 		for itemRows.Next() {
 			var item domain.CategorySpendingItemDetail
 			if err := itemRows.Scan(&item.Name, &item.TotalSpent, &item.Count); err != nil {
 				itemRows.Close()
 				return nil, fmt.Errorf("failed to scan category item: %w", err)
 			}
-			if cat, ok := categoryMap[category.Name]; ok {
-				cat.Items = append(cat.Items, item)
-			}
+			items = append(items, item)
 		}
-
 		itemRows.Close()
-		if err := itemRows.Err(); err != nil {
-			return nil, fmt.Errorf("error iterating category items: %w", err)
-		}
-	}
 
-	// Update result with the detailed categories
-	for i, cat := range result.Categories {
-		if detailedCat, ok := categoryMap[cat.Name]; ok {
-			result.Categories[i].Items = detailedCat.Items
+		// Update the category with items
+		if idx, ok := categoryIndices[category.Name]; ok {
+			result.Categories[idx].Items = items
 		}
 	}
 
@@ -403,25 +387,6 @@ func (r *PostgresReceiptRepository) GetSpendingByCategory(ctx context.Context, s
 
 // GetMerchantFrequency retrieves data on frequently visited merchants
 func (r *PostgresReceiptRepository) GetMerchantFrequency(ctx context.Context, startDateStr, endDateStr *string, limit int) (*domain.MerchantFrequency, error) {
-	// Parse date strings if provided
-	var startDate, endDate *time.Time
-	
-	if startDateStr != nil {
-		parsedDate, err := time.Parse("2006-01-02", *startDateStr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid start date format: %w", err)
-		}
-		startDate = &parsedDate
-	}
-	
-	if endDateStr != nil {
-		parsedDate, err := time.Parse("2006-01-02", *endDateStr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid end date format: %w", err)
-		}
-		endDate = &parsedDate
-	}
-
 	// Validate limit
 	if limit <= 0 {
 		limit = 10 // Default
@@ -430,64 +395,56 @@ func (r *PostgresReceiptRepository) GetMerchantFrequency(ctx context.Context, st
 		limit = 50 // Max
 	}
 
-	// Build query conditions for date filtering
-	conditions := []string{}
-	args := []interface{}{}
-	argCount := 1
-
-	if startDate != nil {
-		conditions = append(conditions, fmt.Sprintf("date >= $%d", argCount))
-		args = append(args, startDate)
-		argCount++
-	}
-	if endDate != nil {
-		conditions = append(conditions, fmt.Sprintf("date <= $%d", argCount))
-		args = append(args, endDate)
-		argCount++
+	// Initialize result
+	result := &domain.MerchantFrequency{
+		TotalVisits: 0,
+		Merchants:   []domain.MerchantFrequencyDetail{},
 	}
 
+	// Build WHERE clause with literal date strings
 	whereClause := ""
-	if len(conditions) > 0 {
-		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	if startDateStr != nil && endDateStr != nil {
+		whereClause = fmt.Sprintf("WHERE date >= '%s'::date AND date <= '%s'::date", *startDateStr, *endDateStr)
+	} else if startDateStr != nil {
+		whereClause = fmt.Sprintf("WHERE date >= '%s'::date", *startDateStr)
+	} else if endDateStr != nil {
+		whereClause = fmt.Sprintf("WHERE date <= '%s'::date", *endDateStr)
 	}
 
-	// Get total visits
-	var totalVisits int
-	err := r.db.QueryRow(ctx, fmt.Sprintf(`
-		SELECT COUNT(*) FROM receipts %s
-	`, whereClause), args...).Scan(&totalVisits)
+	// Get total visit count
+	visitQuery := fmt.Sprintf(`
+		SELECT COUNT(*) 
+		FROM receipts
+		%s
+	`, whereClause)
+	
+	err := r.db.QueryRow(ctx, visitQuery).Scan(&result.TotalVisits)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total visits: %w", err)
 	}
 
-	// Initialize result
-	result := &domain.MerchantFrequency{
-		TotalVisits: totalVisits,
-		Merchants:   []domain.MerchantFrequencyDetail{},
-	}
-
-	// Get merchant frequency
-	args = append(args, limit)
-	
-	rows, err := r.db.Query(ctx, fmt.Sprintf(`
-		SELECT
-			merchant,
+	// Get merchant frequency with limit
+	merchantQuery := fmt.Sprintf(`
+		SELECT 
+			COALESCE(merchant, 'Unknown') as name,
 			COUNT(*) as visits,
 			COALESCE(SUM(total), 0) as total_spent,
-			COALESCE(SUM(total) / COUNT(*), 0) as average_spent,
-			COALESCE(COUNT(*) / NULLIF($%d, 0)::float * 100, 0) as percentage
+			COALESCE(AVG(total), 0) as average_spent
 		FROM receipts
 		%s
 		GROUP BY merchant
-		ORDER BY visits DESC
-		LIMIT $%d
-	`, argCount+1, whereClause, argCount+2), append(args, totalVisits)...)
+		ORDER BY visits DESC, total_spent DESC
+		LIMIT %d
+	`, whereClause, limit)
+
+	// Execute the query
+	rows, err := r.db.Query(ctx, merchantQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query merchant frequency: %w", err)
 	}
 	defer rows.Close()
 
-	// Parse results
+	// Process results
 	for rows.Next() {
 		var merchant domain.MerchantFrequencyDetail
 		if err := rows.Scan(
@@ -495,10 +452,17 @@ func (r *PostgresReceiptRepository) GetMerchantFrequency(ctx context.Context, st
 			&merchant.Visits,
 			&merchant.TotalSpent,
 			&merchant.AverageSpent,
-			&merchant.Percentage,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan merchant: %w", err)
 		}
+
+		// Calculate percentage
+		if result.TotalVisits > 0 {
+			merchant.Percentage = float64(merchant.Visits) / float64(result.TotalVisits) * 100
+		} else {
+			merchant.Percentage = 0
+		}
+
 		result.Merchants = append(result.Merchants, merchant)
 	}
 
