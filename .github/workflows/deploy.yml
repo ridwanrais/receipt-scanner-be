@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DEPLOY_PATH: /opt/app
+      PORT: 8081
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -36,7 +37,7 @@ jobs:
       - name: Create .env file
         run: |
           # Set default values if not provided in secrets
-          PORT=${{ secrets.PORT || '8080' }}
+          PORT=${{ env.PORT }}
           MAX_WORKERS=${{ secrets.MAX_WORKERS || '5' }}
           OCR_LANGUAGES=${{ secrets.OCR_LANGUAGES || 'eng,ind' }}
           SUPABASE_BUCKET=${{ secrets.SUPABASE_BUCKET || 'invoice-images' }}
