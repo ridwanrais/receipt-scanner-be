@@ -1,0 +1,18 @@
+[Unit]
+Description=Golang Gin Web Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/app
+ExecStart=/opt/app/app-binary
+Restart=always
+RestartSec=5
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=goapp
+EnvironmentFile=/opt/app/.env
+
+[Install]
+WantedBy=multi-user.target
