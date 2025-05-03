@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_PATH: /opt/app
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -30,13 +32,6 @@ jobs:
           docker cp app-container:/app/app-binary ./app-binary
           docker rm app-container
           chmod +x app-binary
-
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
       - name: Create .env file
         run: |
@@ -75,15 +70,22 @@ jobs:
           GIN_MODE=release
           EOL
 
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
       - name: Copy binary to VPS
         run: |
-          ssh ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "mkdir -p ${{ secrets.DEPLOY_PATH }}"
-          scp app-binary ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:${{ secrets.DEPLOY_PATH }}/app-binary
+          ssh ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "mkdir -p ${{ env.DEPLOY_PATH }}"
+          scp app-binary ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:${{ env.DEPLOY_PATH }}/app-binary
 
       - name: Copy .env file
         run: |
-          scp .env ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:${{ secrets.DEPLOY_PATH }}/.env
-          ssh ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "chmod 600 ${{ secrets.DEPLOY_PATH }}/.env"
+          scp .env ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:${{ env.DEPLOY_PATH }}/.env
+          ssh ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "chmod 600 ${{ env.DEPLOY_PATH }}/.env"
 
       - name: Copy systemd service file
         run: |
