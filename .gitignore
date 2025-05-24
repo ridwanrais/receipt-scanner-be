@@ -41,3 +41,11 @@ tmp/
 
 # Compiled application binaries
 cmd/server/server
+
+# Debug binaries
+__debug_bin*
+
+# Build files
+bin/*
+
+

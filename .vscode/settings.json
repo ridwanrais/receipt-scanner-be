@@ -1,0 +1,23 @@
+{
+  "go.goroot": "/home/ridwan/.gvm/gos/go1.24.2",
+  "go.gopath": "/home/ridwan/.gvm/pkgsets/go1.24.2/global",
+  "go.toolsEnvVars": {
+    "GOROOT": "/home/ridwan/.gvm/gos/go1.24.2",
+    "GOPATH": "/home/ridwan/.gvm/pkgsets/go1.24.2/global",
+    "GO111MODULE": "on"
+  },
+  "go.alternateTools": {
+    "dlv": "/home/ridwan/.gvm/pkgsets/go1.24.2/global/bin/dlv"
+  },
+  "go.delveConfig": {
+    "dlvLoadConfig": {
+      "followPointers": true,
+      "maxVariableRecurse": 3,
+      "maxStringLen": 1000,
+      "maxArrayValues": 100,
+      "maxStructFields": -1
+    },
+    "apiVersion": 2,
+    "showGlobalVariables": true
+  }
+}
