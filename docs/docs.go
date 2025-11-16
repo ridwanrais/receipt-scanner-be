@@ -49,22 +49,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully processed invoice",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.InvoiceSuccessResponse"
                         }
                     },
                     "400": {
                         "description": "Bad request or configuration error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.InvoiceErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.InvoiceErrorResponse"
                         }
                     }
                 }
@@ -101,15 +98,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Dashboard summary",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.DashboardSummaryResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     }
                 }
@@ -166,22 +161,19 @@ const docTemplate = `{
                     "200": {
                         "description": "List of receipts",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ReceiptsListResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     }
                 }
@@ -213,22 +205,19 @@ const docTemplate = `{
                     "201": {
                         "description": "Receipt created successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ReceiptResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid input",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     }
                 }
@@ -260,29 +249,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully scanned receipt",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ReceiptResponse"
                         }
                     },
                     "400": {
                         "description": "Bad request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     },
                     "422": {
                         "description": "Unable to extract data",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     }
                 }
@@ -314,29 +299,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Receipt details",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ReceiptResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid receipt ID",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Receipt not found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     }
                 }
@@ -375,29 +356,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Receipt updated successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ReceiptResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid input",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Receipt not found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     }
                 }
@@ -430,22 +407,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid receipt ID",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Receipt not found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     }
                 }
@@ -508,6 +482,262 @@ const docTemplate = `{
                 },
                 "qty": {
                     "type": "integer"
+                }
+            }
+        },
+        "model.CategorySummary": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "percentage": {
+                    "type": "number"
+                }
+            }
+        },
+        "model.DashboardSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "averageSpend": {
+                    "type": "string"
+                },
+                "receiptCount": {
+                    "type": "integer"
+                },
+                "topCategories": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CategorySummary"
+                    }
+                },
+                "topMerchants": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MerchantSummary"
+                    }
+                },
+                "totalSpend": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ErrorDetail": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ErrorDetail"
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.InvoiceDTO": {
+            "type": "object",
+            "properties": {
+                "discount": {
+                    "type": "number"
+                },
+                "due_date": {
+                    "description": "Format: YYYY-MM-DD",
+                    "type": "string"
+                },
+                "invoice_date": {
+                    "description": "Format: YYYY-MM-DD",
+                    "type": "string"
+                },
+                "invoice_number": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.LineItemDTO"
+                    }
+                },
+                "subtotal": {
+                    "type": "number"
+                },
+                "tax_amount": {
+                    "type": "number"
+                },
+                "tax_rate_percent": {
+                    "type": "number"
+                },
+                "total_due": {
+                    "type": "number"
+                },
+                "vendor_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.InvoiceErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "model.InvoiceSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "invoice": {
+                    "$ref": "#/definitions/model.InvoiceDTO"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "model.LineItemDTO": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "quantity": {
+                    "type": "number"
+                },
+                "total": {
+                    "type": "number"
+                },
+                "unit_price": {
+                    "type": "number"
+                }
+            }
+        },
+        "model.MerchantSummary": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "merchant": {
+                    "type": "string"
+                },
+                "percentage": {
+                    "type": "number"
+                }
+            }
+        },
+        "model.PaginationResponse": {
+            "type": "object",
+            "properties": {
+                "currentPage": {
+                    "type": "integer"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "totalItems": {
+                    "type": "integer"
+                },
+                "totalPages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.ReceiptItemResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "string"
+                },
+                "qty": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.ReceiptResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ReceiptItemResponse"
+                    }
+                },
+                "merchant": {
+                    "type": "string"
+                },
+                "subtotal": {
+                    "type": "string"
+                },
+                "tax": {
+                    "type": "string"
+                },
+                "total": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ReceiptsListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ReceiptResponse"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/model.PaginationResponse"
                 }
             }
         }

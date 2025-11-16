@@ -41,3 +41,4 @@ tmp/
 
 # Compiled application binaries
 cmd/server/server
+bin/test

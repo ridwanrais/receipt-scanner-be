@@ -38,6 +38,173 @@ definitions:
       qty:
         type: integer
     type: object
+  model.CategorySummary:
+    properties:
+      amount:
+        type: string
+      category:
+        type: string
+      percentage:
+        type: number
+    type: object
+  model.DashboardSummaryResponse:
+    properties:
+      averageSpend:
+        type: string
+      receiptCount:
+        type: integer
+      topCategories:
+        items:
+          $ref: '#/definitions/model.CategorySummary'
+        type: array
+      topMerchants:
+        items:
+          $ref: '#/definitions/model.MerchantSummary'
+        type: array
+      totalSpend:
+        type: string
+    type: object
+  model.ErrorDetail:
+    properties:
+      field:
+        type: string
+      message:
+        type: string
+    type: object
+  model.ErrorResponse:
+    properties:
+      details:
+        items:
+          $ref: '#/definitions/model.ErrorDetail'
+        type: array
+      message:
+        type: string
+      status:
+        type: string
+    type: object
+  model.InvoiceDTO:
+    properties:
+      discount:
+        type: number
+      due_date:
+        description: 'Format: YYYY-MM-DD'
+        type: string
+      invoice_date:
+        description: 'Format: YYYY-MM-DD'
+        type: string
+      invoice_number:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/model.LineItemDTO'
+        type: array
+      subtotal:
+        type: number
+      tax_amount:
+        type: number
+      tax_rate_percent:
+        type: number
+      total_due:
+        type: number
+      vendor_name:
+        type: string
+    type: object
+  model.InvoiceErrorResponse:
+    properties:
+      error:
+        type: string
+      success:
+        type: boolean
+    type: object
+  model.InvoiceSuccessResponse:
+    properties:
+      invoice:
+        $ref: '#/definitions/model.InvoiceDTO'
+      success:
+        type: boolean
+    type: object
+  model.LineItemDTO:
+    properties:
+      category:
+        type: string
+      description:
+        type: string
+      details:
+        items:
+          type: string
+        type: array
+      quantity:
+        type: number
+      total:
+        type: number
+      unit_price:
+        type: number
+    type: object
+  model.MerchantSummary:
+    properties:
+      amount:
+        type: string
+      merchant:
+        type: string
+      percentage:
+        type: number
+    type: object
+  model.PaginationResponse:
+    properties:
+      currentPage:
+        type: integer
+      limit:
+        type: integer
+      totalItems:
+        type: integer
+      totalPages:
+        type: integer
+    type: object
+  model.ReceiptItemResponse:
+    properties:
+      category:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      price:
+        type: string
+      qty:
+        type: integer
+    type: object
+  model.ReceiptResponse:
+    properties:
+      createdAt:
+        type: string
+      date:
+        type: string
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/model.ReceiptItemResponse'
+        type: array
+      merchant:
+        type: string
+      subtotal:
+        type: string
+      tax:
+        type: string
+      total:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  model.ReceiptsListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/model.ReceiptResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/model.PaginationResponse'
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -68,18 +235,15 @@ paths:
         "200":
           description: Successfully processed invoice
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.InvoiceSuccessResponse'
         "400":
           description: Bad request or configuration error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.InvoiceErrorResponse'
         "500":
           description: Internal server error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.InvoiceErrorResponse'
       summary: Process an invoice
       tags:
       - invoices
@@ -103,13 +267,11 @@ paths:
         "200":
           description: Dashboard summary
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.DashboardSummaryResponse'
         "500":
           description: Internal server error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Get dashboard summary
       tags:
       - dashboard
@@ -147,18 +309,15 @@ paths:
         "200":
           description: List of receipts
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ReceiptsListResponse'
         "400":
           description: Invalid query parameters
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
       summary: List all receipts
       tags:
       - receipts
@@ -179,18 +338,15 @@ paths:
         "201":
           description: Receipt created successfully
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ReceiptResponse'
         "400":
           description: Invalid input
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Create a new receipt
       tags:
       - receipts
@@ -213,18 +369,15 @@ paths:
         "400":
           description: Invalid receipt ID
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
         "404":
           description: Receipt not found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Delete a receipt
       tags:
       - receipts
@@ -244,23 +397,19 @@ paths:
         "200":
           description: Receipt details
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ReceiptResponse'
         "400":
           description: Invalid receipt ID
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
         "404":
           description: Receipt not found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Get a receipt by ID
       tags:
       - receipts
@@ -286,23 +435,19 @@ paths:
         "200":
           description: Receipt updated successfully
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ReceiptResponse'
         "400":
           description: Invalid input
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
         "404":
           description: Receipt not found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Update a receipt
       tags:
       - receipts
@@ -323,23 +468,19 @@ paths:
         "200":
           description: Successfully scanned receipt
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ReceiptResponse'
         "400":
           description: Bad request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
         "422":
           description: Unable to extract data
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.ErrorResponse'
       summary: Scan a receipt image
       tags:
       - receipts

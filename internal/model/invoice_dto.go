@@ -41,6 +41,18 @@ type InvoiceProcessingResponse struct {
 	Error   string      `json:"error,omitempty"`
 }
 
+// InvoiceSuccessResponse represents a successful invoice processing response
+type InvoiceSuccessResponse struct {
+	Success bool        `json:"success"`
+	Invoice *InvoiceDTO `json:"invoice"`
+}
+
+// InvoiceErrorResponse represents an error response from invoice processing
+type InvoiceErrorResponse struct {
+	Success bool   `json:"success"`
+	Error   string `json:"error"`
+}
+
 // FromDomain converts a domain Invoice to an InvoiceDTO
 func (dto *InvoiceDTO) FromDomain(invoice *domain.Invoice) {
 	dto.VendorName = invoice.VendorName

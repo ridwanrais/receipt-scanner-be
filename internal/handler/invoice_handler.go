@@ -38,9 +38,9 @@ func (h *InvoiceHandler) RegisterRoutes(router *gin.Engine) {
 // @Accept multipart/form-data
 // @Produce json
 // @Param file formData file true "Invoice image file"
-// @Success 200 {object} map[string]interface{} "Successfully processed invoice"
-// @Failure 400 {object} map[string]interface{} "Bad request or configuration error"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Success 200 {object} model.InvoiceSuccessResponse "Successfully processed invoice"
+// @Failure 400 {object} model.InvoiceErrorResponse "Bad request or configuration error"
+// @Failure 500 {object} model.InvoiceErrorResponse "Internal server error"
 // @Router /api/v1/invoices/process [post]
 func (h *InvoiceHandler) ProcessInvoice(c *gin.Context) {
 	// Parse multipart form data
