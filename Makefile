@@ -6,7 +6,7 @@ CMD_DIR=./cmd/server
 BIN_DIR=./bin
 BIN_PATH=$(BIN_DIR)/$(APP_NAME)
 
-.PHONY: all build run debug hotreload migrate test clean
+.PHONY: all build run debug hotreload migrate test clean swagger
 
 all: build
 
@@ -22,7 +22,9 @@ hotreload-debug:
 	wgo --cmd "dlv" -- debug ./cmd/server --headless --listen=:2345 --api-version=2 --accept-multiclient --log
 
 hotreload:
-	wgo run cmd/server/main.go
+	@echo "Starting hot reload with Swagger auto-regeneration..."
+	@~/go/bin/swag init -g cmd/server/main.go -o docs
+	~/go/bin/wgo -file=.go -xfile=_test.go -xdir=tmp,bin,vendor,.git go run cmd/server/main.go
 
 # Run database migration script
 migrate:
@@ -34,3 +36,7 @@ test:
 
 clean:
 	rm -rf $(BIN_DIR) tmp
+
+# Generate Swagger documentation
+swagger:
+	~/go/bin/swag init -g cmd/server/main.go -o docs

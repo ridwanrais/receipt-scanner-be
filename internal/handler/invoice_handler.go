@@ -32,6 +32,16 @@ func (h *InvoiceHandler) RegisterRoutes(router *gin.Engine) {
 }
 
 // ProcessInvoice handles a request to process a single invoice image
+// @Summary Process an invoice
+// @Description Upload and process an invoice image to extract data using AI
+// @Tags invoices
+// @Accept multipart/form-data
+// @Produce json
+// @Param file formData file true "Invoice image file"
+// @Success 200 {object} map[string]interface{} "Successfully processed invoice"
+// @Failure 400 {object} map[string]interface{} "Bad request or configuration error"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /api/v1/invoices/process [post]
 func (h *InvoiceHandler) ProcessInvoice(c *gin.Context) {
 	// Parse multipart form data
 	if err := c.Request.ParseMultipartForm(h.maxFileSize); err != nil {

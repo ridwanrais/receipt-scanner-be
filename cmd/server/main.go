@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	_ "github.com/ridwanfathin/invoice-processor-service/docs"
 	"github.com/ridwanfathin/invoice-processor-service/internal/config"
 	"github.com/ridwanfathin/invoice-processor-service/internal/database"
 	"github.com/ridwanfathin/invoice-processor-service/internal/handler"
@@ -16,6 +17,25 @@ import (
 	"github.com/ridwanfathin/invoice-processor-service/internal/server"
 	"github.com/ridwanfathin/invoice-processor-service/internal/service"
 )
+
+// @title Receipt Scanner API
+// @version 1.0
+// @description API for scanning and managing receipts with AI-powered data extraction
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.email support@example.com
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /
+// @schemes http https
+
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
 
 func main() {
 	// Create a context that will be canceled on interrupt

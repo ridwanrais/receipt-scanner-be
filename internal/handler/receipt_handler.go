@@ -26,6 +26,17 @@ func NewReceiptHandler(receiptService service.ReceiptService) *ReceiptHandler {
 }
 
 // ScanReceipt handles the POST /receipts/scan endpoint
+// @Summary Scan a receipt image
+// @Description Upload and process a receipt image to extract data using AI
+// @Tags receipts
+// @Accept multipart/form-data
+// @Produce json
+// @Param receiptImage formData file true "Receipt image file"
+// @Success 200 {object} map[string]interface{} "Successfully scanned receipt"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 422 {object} map[string]interface{} "Unable to extract data"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /v1/receipts/scan [post]
 func (h *ReceiptHandler) ScanReceipt(c *gin.Context) {
 	// Get receipt image from form data
 	file, _, err := c.Request.FormFile("receiptImage")
@@ -81,6 +92,16 @@ func (h *ReceiptHandler) ScanReceipt(c *gin.Context) {
 }
 
 // CreateReceipt handles the POST /receipts endpoint
+// @Summary Create a new receipt
+// @Description Create a new receipt with manual data entry
+// @Tags receipts
+// @Accept json
+// @Produce json
+// @Param receipt body domain.Receipt true "Receipt data"
+// @Success 201 {object} map[string]interface{} "Receipt created successfully"
+// @Failure 400 {object} map[string]interface{} "Invalid input"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /v1/receipts [post]
 func (h *ReceiptHandler) CreateReceipt(c *gin.Context) {
 	var input domain.Receipt
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -116,6 +137,20 @@ func (h *ReceiptHandler) CreateReceipt(c *gin.Context) {
 }
 
 // GetReceipts handles the GET /receipts endpoint
+// @Summary List all receipts
+// @Description Get a paginated list of receipts with optional filters
+// @Tags receipts
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(10)
+// @Param startDate query string false "Start date filter (YYYY-MM-DD)"
+// @Param endDate query string false "End date filter (YYYY-MM-DD)"
+// @Param merchant query string false "Merchant name filter"
+// @Success 200 {object} map[string]interface{} "List of receipts"
+// @Failure 400 {object} map[string]interface{} "Invalid query parameters"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /v1/receipts [get]
 func (h *ReceiptHandler) GetReceipts(c *gin.Context) {
 	// Parse query parameters
 	filter, err := parseReceiptFilter(c)
@@ -157,6 +192,17 @@ func (h *ReceiptHandler) GetReceipts(c *gin.Context) {
 }
 
 // GetReceiptByID handles the GET /receipts/{receiptId} endpoint
+// @Summary Get a receipt by ID
+// @Description Retrieve a specific receipt by its ID
+// @Tags receipts
+// @Accept json
+// @Produce json
+// @Param receiptId path string true "Receipt ID"
+// @Success 200 {object} map[string]interface{} "Receipt details"
+// @Failure 400 {object} map[string]interface{} "Invalid receipt ID"
+// @Failure 404 {object} map[string]interface{} "Receipt not found"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /v1/receipts/{receiptId} [get]
 func (h *ReceiptHandler) GetReceiptByID(c *gin.Context) {
 	receiptID := c.Param("receiptId")
 	if receiptID == "" {
@@ -189,6 +235,18 @@ func (h *ReceiptHandler) GetReceiptByID(c *gin.Context) {
 }
 
 // UpdateReceipt handles the PUT /receipts/{receiptId} endpoint
+// @Summary Update a receipt
+// @Description Update an existing receipt by ID
+// @Tags receipts
+// @Accept json
+// @Produce json
+// @Param receiptId path string true "Receipt ID"
+// @Param receipt body domain.Receipt true "Updated receipt data"
+// @Success 200 {object} map[string]interface{} "Receipt updated successfully"
+// @Failure 400 {object} map[string]interface{} "Invalid input"
+// @Failure 404 {object} map[string]interface{} "Receipt not found"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /v1/receipts/{receiptId} [put]
 func (h *ReceiptHandler) UpdateReceipt(c *gin.Context) {
 	receiptID := c.Param("receiptId")
 	if receiptID == "" {
@@ -244,6 +302,17 @@ func (h *ReceiptHandler) UpdateReceipt(c *gin.Context) {
 }
 
 // DeleteReceipt handles the DELETE /receipts/{receiptId} endpoint
+// @Summary Delete a receipt
+// @Description Delete a receipt by ID
+// @Tags receipts
+// @Accept json
+// @Produce json
+// @Param receiptId path string true "Receipt ID"
+// @Success 204 "Receipt deleted successfully"
+// @Failure 400 {object} map[string]interface{} "Invalid receipt ID"
+// @Failure 404 {object} map[string]interface{} "Receipt not found"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /v1/receipts/{receiptId} [delete]
 func (h *ReceiptHandler) DeleteReceipt(c *gin.Context) {
 	receiptID := c.Param("receiptId")
 	if receiptID == "" {
@@ -308,6 +377,16 @@ func (h *ReceiptHandler) GetReceiptItems(c *gin.Context) {
 }
 
 // GetDashboardSummary handles the GET /dashboard/summary endpoint
+// @Summary Get dashboard summary
+// @Description Get summary statistics for the dashboard
+// @Tags dashboard
+// @Accept json
+// @Produce json
+// @Param startDate query string false "Start date filter (YYYY-MM-DD)"
+// @Param endDate query string false "End date filter (YYYY-MM-DD)"
+// @Success 200 {object} map[string]interface{} "Dashboard summary"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /v1/dashboard/summary [get]
 func (h *ReceiptHandler) GetDashboardSummary(c *gin.Context) {
 	// Parse query parameters
 	startDate, endDate := parseDateRange(c)

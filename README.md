@@ -76,6 +76,35 @@ Example:
 PORT=9000 MAX_WORKERS=10 OPENROUTER_API_KEY=your-key ./bin/invoice-processor-service
 ```
 
+## API Documentation
+
+This service includes interactive API documentation using Swagger/OpenAPI.
+
+### Accessing Swagger UI
+
+Once the server is running, you can access the Swagger UI at:
+```
+http://localhost:8080/swagger/index.html
+```
+
+The Swagger UI provides:
+- Interactive API documentation
+- Ability to test endpoints directly from the browser
+- Request/response schemas
+- Authentication details
+
+### Regenerating Swagger Documentation
+
+After making changes to API endpoints or annotations, regenerate the documentation:
+```bash
+make swagger
+```
+
+Or manually:
+```bash
+~/go/bin/swag init -g cmd/server/main.go -o docs
+```
+
 ## API Endpoints
 
 ### POST /api/v1/invoices/process

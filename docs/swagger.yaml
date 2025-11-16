@@ -1,0 +1,354 @@
+basePath: /
+definitions:
+  domain.Receipt:
+    properties:
+      created_at:
+        type: string
+      date:
+        type: string
+      id:
+        type: string
+      image_url:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/domain.ReceiptItem'
+        type: array
+      merchant:
+        type: string
+      subtotal:
+        type: number
+      tax:
+        type: number
+      total:
+        type: number
+      updated_at:
+        type: string
+    type: object
+  domain.ReceiptItem:
+    properties:
+      category:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      price:
+        type: number
+      qty:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+  description: API for scanning and managing receipts with AI-powered data extraction
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Receipt Scanner API
+  version: "1.0"
+paths:
+  /api/v1/invoices/process:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload and process an invoice image to extract data using AI
+      parameters:
+      - description: Invoice image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully processed invoice
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request or configuration error
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Process an invoice
+      tags:
+      - invoices
+  /v1/dashboard/summary:
+    get:
+      consumes:
+      - application/json
+      description: Get summary statistics for the dashboard
+      parameters:
+      - description: Start date filter (YYYY-MM-DD)
+        in: query
+        name: startDate
+        type: string
+      - description: End date filter (YYYY-MM-DD)
+        in: query
+        name: endDate
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Dashboard summary
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get dashboard summary
+      tags:
+      - dashboard
+  /v1/receipts:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of receipts with optional filters
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Start date filter (YYYY-MM-DD)
+        in: query
+        name: startDate
+        type: string
+      - description: End date filter (YYYY-MM-DD)
+        in: query
+        name: endDate
+        type: string
+      - description: Merchant name filter
+        in: query
+        name: merchant
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of receipts
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid query parameters
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List all receipts
+      tags:
+      - receipts
+    post:
+      consumes:
+      - application/json
+      description: Create a new receipt with manual data entry
+      parameters:
+      - description: Receipt data
+        in: body
+        name: receipt
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Receipt'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Receipt created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid input
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new receipt
+      tags:
+      - receipts
+  /v1/receipts/{receiptId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a receipt by ID
+      parameters:
+      - description: Receipt ID
+        in: path
+        name: receiptId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Receipt deleted successfully
+        "400":
+          description: Invalid receipt ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Receipt not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete a receipt
+      tags:
+      - receipts
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific receipt by its ID
+      parameters:
+      - description: Receipt ID
+        in: path
+        name: receiptId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Receipt details
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid receipt ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Receipt not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get a receipt by ID
+      tags:
+      - receipts
+    put:
+      consumes:
+      - application/json
+      description: Update an existing receipt by ID
+      parameters:
+      - description: Receipt ID
+        in: path
+        name: receiptId
+        required: true
+        type: string
+      - description: Updated receipt data
+        in: body
+        name: receipt
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Receipt'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Receipt updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid input
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Receipt not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update a receipt
+      tags:
+      - receipts
+  /v1/receipts/scan:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload and process a receipt image to extract data using AI
+      parameters:
+      - description: Receipt image file
+        in: formData
+        name: receiptImage
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully scanned receipt
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "422":
+          description: Unable to extract data
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Scan a receipt image
+      tags:
+      - receipts
+schemes:
+- http
+- https
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

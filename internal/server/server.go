@@ -15,6 +15,8 @@ import (
 	"github.com/ridwanfathin/invoice-processor-service/internal/handler"
 	"github.com/ridwanfathin/invoice-processor-service/internal/middleware"
 	"github.com/ridwanfathin/invoice-processor-service/internal/service"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // Server represents the HTTP server for the invoice processing service
@@ -76,6 +78,9 @@ func (s *Server) setupRoutes() {
 			"processor_type": "ai", // We're using AI processor exclusively in the new architecture
 		})
 	})
+
+	// Swagger documentation endpoint
+	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 }
 
 // RegisterReceiptRoutes registers the receipt API routes
