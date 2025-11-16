@@ -22,9 +22,7 @@ hotreload-debug:
 	wgo --cmd "dlv" -- debug ./cmd/server --headless --listen=:2345 --api-version=2 --accept-multiclient --log
 
 hotreload:
-	@echo "Starting hot reload with Swagger auto-regeneration..."
-	@~/go/bin/swag init -g cmd/server/main.go -o docs
-	~/go/bin/wgo -file=.go -xfile=_test.go -xdir=tmp,bin,vendor,.git go run cmd/server/main.go
+	@./scripts/dev.sh
 
 # Run database migration script
 migrate:

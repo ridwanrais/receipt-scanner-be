@@ -21,50 +21,6 @@
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
-        "/api/v1/invoices/process": {
-            "post": {
-                "description": "Upload and process an invoice image to extract data using AI",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "invoices"
-                ],
-                "summary": "Process an invoice",
-                "parameters": [
-                    {
-                        "type": "file",
-                        "description": "Invoice image file",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successfully processed invoice",
-                        "schema": {
-                            "$ref": "#/definitions/model.InvoiceSuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request or configuration error",
-                        "schema": {
-                            "$ref": "#/definitions/model.InvoiceErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/model.InvoiceErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/v1/dashboard/summary": {
             "get": {
                 "description": "Get summary statistics for the dashboard",
@@ -103,6 +59,50 @@
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/invoices/process": {
+            "post": {
+                "description": "Upload and process an invoice image to extract data using AI",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "invoices"
+                ],
+                "summary": "Process an invoice",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Invoice image file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully processed invoice",
+                        "schema": {
+                            "$ref": "#/definitions/model.InvoiceSuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request or configuration error",
+                        "schema": {
+                            "$ref": "#/definitions/model.InvoiceErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/model.InvoiceErrorResponse"
                         }
                     }
                 }

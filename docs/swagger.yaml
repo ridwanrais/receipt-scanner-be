@@ -218,35 +218,6 @@ info:
   title: Receipt Scanner API
   version: "1.0"
 paths:
-  /api/v1/invoices/process:
-    post:
-      consumes:
-      - multipart/form-data
-      description: Upload and process an invoice image to extract data using AI
-      parameters:
-      - description: Invoice image file
-        in: formData
-        name: file
-        required: true
-        type: file
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successfully processed invoice
-          schema:
-            $ref: '#/definitions/model.InvoiceSuccessResponse'
-        "400":
-          description: Bad request or configuration error
-          schema:
-            $ref: '#/definitions/model.InvoiceErrorResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/model.InvoiceErrorResponse'
-      summary: Process an invoice
-      tags:
-      - invoices
   /v1/dashboard/summary:
     get:
       consumes:
@@ -275,6 +246,35 @@ paths:
       summary: Get dashboard summary
       tags:
       - dashboard
+  /v1/invoices/process:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload and process an invoice image to extract data using AI
+      parameters:
+      - description: Invoice image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully processed invoice
+          schema:
+            $ref: '#/definitions/model.InvoiceSuccessResponse'
+        "400":
+          description: Bad request or configuration error
+          schema:
+            $ref: '#/definitions/model.InvoiceErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/model.InvoiceErrorResponse'
+      summary: Process an invoice
+      tags:
+      - invoices
   /v1/receipts:
     get:
       consumes:

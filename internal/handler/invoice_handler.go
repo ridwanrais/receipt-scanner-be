@@ -27,8 +27,8 @@ func NewInvoiceHandler(processor service.InvoiceProcessorServicer) *InvoiceHandl
 
 // RegisterRoutes registers the handler's routes with the given router
 func (h *InvoiceHandler) RegisterRoutes(router *gin.Engine) {
-	router.POST("/api/v1/invoices/process", h.ProcessInvoice)
-	router.POST("/api/v1/invoices/batch", h.ProcessInvoiceBatch)
+	router.POST("/v1/invoices/process", h.ProcessInvoice)
+	router.POST("/v1/invoices/batch", h.ProcessInvoiceBatch)
 }
 
 // ProcessInvoice handles a request to process a single invoice image
@@ -41,44 +41,32 @@ func (h *InvoiceHandler) RegisterRoutes(router *gin.Engine) {
 // @Success 200 {object} model.InvoiceSuccessResponse "Successfully processed invoice"
 // @Failure 400 {object} model.InvoiceErrorResponse "Bad request or configuration error"
 // @Failure 500 {object} model.InvoiceErrorResponse "Internal server error"
-// @Router /api/v1/invoices/process [post]
+// @Router /v1/invoices/process [post]
 func (h *InvoiceHandler) ProcessInvoice(c *gin.Context) {
 	// Parse multipart form data
 	if err := c.Request.ParseMultipartForm(h.maxFileSize); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Failed to parse form data: " + err.Error(),
-		})
+		respondBadRequest(c, "Failed to parse form data: "+err.Error())
 		return
 	}
 
 	// Get the file from the form
-	file, header, err := c.Request.FormFile("file")
+	file, header, err := getFormFile(c, "file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "No file uploaded or invalid file field",
-		})
+		respondBadRequest(c, err.Error())
 		return
 	}
 	defer file.Close()
 
 	// Check file size
 	if header.Size > h.maxFileSize {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "File size exceeds limit",
-		})
+		respondBadRequest(c, "File size exceeds limit")
 		return
 	}
 
 	// Read the file data
 	fileData := make([]byte, header.Size)
 	if _, err := file.Read(fileData); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to read file data: " + err.Error(),
-		})
+		respondInternalServerError(c, "Failed to read file data: "+err.Error())
 		return
 	}
 
@@ -93,34 +81,26 @@ func (h *InvoiceHandler) ProcessInvoice(c *gin.Context) {
 	if err != nil {
 		// Check if it's a configuration error
 		if strings.Contains(err.Error(), "not configured") {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"error":   fmt.Sprintf("Configuration error: %v", err.Error()),
-			})
-			return
+			respondBadRequest(c, fmt.Sprintf("Configuration error: %v", err.Error()))
+		} else {
+			respondInternalServerError(c, fmt.Sprintf("Processing failed: %v", err.Error()))
 		}
-
-		// Otherwise, it's an internal server error
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   fmt.Sprintf("Processing failed: %v", err.Error()),
-		})
 		return
 	}
 
 	// Check for application-level errors in the response
 	if response.Error != "" {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"error":   response.Error,
+		respondOK(c, model.InvoiceErrorResponse{
+			Success: false,
+			Error:   response.Error,
 		})
 		return
 	}
 
 	// Return successful response
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"invoice": response.Invoice,
+	respondOK(c, model.InvoiceSuccessResponse{
+		Success: true,
+		Invoice: response.Invoice,
 	})
 }
 

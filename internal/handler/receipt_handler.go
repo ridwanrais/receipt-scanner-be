@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ridwanfathin/invoice-processor-service/internal/domain"
+	"github.com/ridwanfathin/invoice-processor-service/internal/model"
 	"github.com/ridwanfathin/invoice-processor-service/internal/service"
 )
 
@@ -39,18 +40,9 @@ func NewReceiptHandler(receiptService service.ReceiptService) *ReceiptHandler {
 // @Router /v1/receipts/scan [post]
 func (h *ReceiptHandler) ScanReceipt(c *gin.Context) {
 	// Get receipt image from form data
-	file, _, err := c.Request.FormFile("receiptImage")
+	file, _, err := getFormFile(c, "receiptImage")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "400",
-			"message": "No receipt image provided",
-			"details": []gin.H{
-				{
-					"field":   "receiptImage",
-					"message": "Receipt image is required",
-				},
-			},
-		})
+		respondBadRequest(c, err.Error(), newErrorDetail("receiptImage", "Receipt image is required"))
 		return
 	}
 	defer file.Close()
@@ -58,37 +50,25 @@ func (h *ReceiptHandler) ScanReceipt(c *gin.Context) {
 	// Read file contents
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "500",
-			"message": "Failed to read receipt image",
-		})
+		respondInternalServerError(c, ErrFileProcessing)
 		return
 	}
 
 	// Process receipt image
 	receipt, err := h.receiptService.ScanReceipt(c.Request.Context(), fileBytes)
 	if err != nil {
-		statusCode := http.StatusInternalServerError
-		message := "Failed to process receipt"
-
 		// Check for specific error types
 		if strings.Contains(fmt.Sprintf("%v", err), "not configured") {
-			statusCode = http.StatusBadRequest
-			message = fmt.Sprintf("Configuration error: %v", err)
+			respondBadRequest(c, fmt.Sprintf("Configuration error: %v", err))
 		} else if strings.Contains(fmt.Sprintf("%v", err), "unable to extract") {
-			statusCode = http.StatusUnprocessableEntity
-			message = "Unable to extract data from receipt image"
+			respondUnprocessableEntity(c, ErrDataExtraction)
+		} else {
+			respondInternalServerError(c, ErrFileProcessing)
 		}
-
-		c.JSON(statusCode, gin.H{
-			"status":  strconv.Itoa(statusCode),
-			"message": message,
-		})
 		return
 	}
 
-	// Format response
-	c.JSON(http.StatusOK, formatReceiptResponse(receipt))
+	respondOK(c, formatReceiptResponse(receipt))
 }
 
 // CreateReceipt handles the POST /receipts endpoint
@@ -104,36 +84,25 @@ func (h *ReceiptHandler) ScanReceipt(c *gin.Context) {
 // @Router /v1/receipts [post]
 func (h *ReceiptHandler) CreateReceipt(c *gin.Context) {
 	var input domain.Receipt
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "400",
-			"message": "Invalid input format",
-		})
+	if err := bindJSON(c, &input); err != nil {
+		respondBadRequest(c, ErrInvalidInput)
 		return
 	}
 
 	// Validate required fields
-	if err := validateReceiptInput(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "400",
-			"message": "Invalid input",
-			"details": err,
-		})
+	if validationErrors := validateReceiptInput(&input); len(validationErrors) > 0 {
+		respondBadRequest(c, ErrInvalidInput, validationErrors...)
 		return
 	}
 
 	// Create receipt
 	receipt, err := h.receiptService.CreateReceipt(c.Request.Context(), &input)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "500",
-			"message": fmt.Sprintf("Failed to create receipt: %v", err),
-		})
+		respondInternalServerError(c, fmt.Sprintf("Failed to create receipt: %v", err))
 		return
 	}
 
-	// Return created receipt
-	c.JSON(http.StatusCreated, formatReceiptResponse(receipt))
+	respondCreated(c, formatReceiptResponse(receipt))
 }
 
 // GetReceipts handles the GET /receipts endpoint
@@ -204,12 +173,9 @@ func (h *ReceiptHandler) GetReceipts(c *gin.Context) {
 // @Failure 500 {object} model.ErrorResponse "Internal server error"
 // @Router /v1/receipts/{receiptId} [get]
 func (h *ReceiptHandler) GetReceiptByID(c *gin.Context) {
-	receiptID := c.Param("receiptId")
-	if receiptID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "400",
-			"message": "Receipt ID is required",
-		})
+	receiptID, err := getPathParam(c, "receiptId")
+	if err != nil {
+		respondBadRequest(c, err.Error())
 		return
 	}
 
@@ -217,21 +183,14 @@ func (h *ReceiptHandler) GetReceiptByID(c *gin.Context) {
 	receipt, err := h.receiptService.GetReceiptByID(c.Request.Context(), receiptID)
 	if err != nil {
 		if strings.Contains(fmt.Sprintf("%v", err), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{
-				"status":  "404",
-				"message": fmt.Sprintf("Receipt not found: %s", receiptID),
-			})
-			return
+			respondNotFound(c, fmt.Sprintf("Receipt not found: %s", receiptID))
+		} else {
+			respondInternalServerError(c, fmt.Sprintf("Failed to retrieve receipt: %v", err))
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "500",
-			"message": fmt.Sprintf("Failed to retrieve receipt: %v", err),
-		})
 		return
 	}
 
-	// Return receipt
-	c.JSON(http.StatusOK, formatReceiptResponse(receipt))
+	respondOK(c, formatReceiptResponse(receipt))
 }
 
 // UpdateReceipt handles the PUT /receipts/{receiptId} endpoint
@@ -248,32 +207,22 @@ func (h *ReceiptHandler) GetReceiptByID(c *gin.Context) {
 // @Failure 500 {object} model.ErrorResponse "Internal server error"
 // @Router /v1/receipts/{receiptId} [put]
 func (h *ReceiptHandler) UpdateReceipt(c *gin.Context) {
-	receiptID := c.Param("receiptId")
-	if receiptID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "400",
-			"message": "Receipt ID is required",
-		})
+	receiptID, err := getPathParam(c, "receiptId")
+	if err != nil {
+		respondBadRequest(c, err.Error())
 		return
 	}
 
 	// Parse input
 	var input domain.Receipt
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "400",
-			"message": "Invalid input format",
-		})
+	if err := bindJSON(c, &input); err != nil {
+		respondBadRequest(c, ErrInvalidInput)
 		return
 	}
 
 	// Validate required fields
-	if err := validateReceiptInput(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "400",
-			"message": "Invalid input",
-			"details": err,
-		})
+	if validationErrors := validateReceiptInput(&input); len(validationErrors) > 0 {
+		respondBadRequest(c, ErrInvalidInput, validationErrors...)
 		return
 	}
 
@@ -284,21 +233,14 @@ func (h *ReceiptHandler) UpdateReceipt(c *gin.Context) {
 	updatedReceipt, err := h.receiptService.UpdateReceipt(c.Request.Context(), &input)
 	if err != nil {
 		if strings.Contains(fmt.Sprintf("%v", err), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{
-				"status":  "404",
-				"message": fmt.Sprintf("Receipt not found: %s", receiptID),
-			})
-			return
+			respondNotFound(c, fmt.Sprintf("Receipt not found: %s", receiptID))
+		} else {
+			respondInternalServerError(c, fmt.Sprintf("Failed to update receipt: %v", err))
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "500",
-			"message": fmt.Sprintf("Failed to update receipt: %v", err),
-		})
 		return
 	}
 
-	// Return updated receipt
-	c.JSON(http.StatusOK, formatReceiptResponse(updatedReceipt))
+	respondOK(c, formatReceiptResponse(updatedReceipt))
 }
 
 // DeleteReceipt handles the DELETE /receipts/{receiptId} endpoint
@@ -314,34 +256,24 @@ func (h *ReceiptHandler) UpdateReceipt(c *gin.Context) {
 // @Failure 500 {object} model.ErrorResponse "Internal server error"
 // @Router /v1/receipts/{receiptId} [delete]
 func (h *ReceiptHandler) DeleteReceipt(c *gin.Context) {
-	receiptID := c.Param("receiptId")
-	if receiptID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "400",
-			"message": "Receipt ID is required",
-		})
+	receiptID, err := getPathParam(c, "receiptId")
+	if err != nil {
+		respondBadRequest(c, err.Error())
 		return
 	}
 
 	// Delete receipt
-	err := h.receiptService.DeleteReceipt(c.Request.Context(), receiptID)
+	err = h.receiptService.DeleteReceipt(c.Request.Context(), receiptID)
 	if err != nil {
 		if strings.Contains(fmt.Sprintf("%v", err), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{
-				"status":  "404",
-				"message": fmt.Sprintf("Receipt not found: %s", receiptID),
-			})
-			return
+			respondNotFound(c, fmt.Sprintf("Receipt not found: %s", receiptID))
+		} else {
+			respondInternalServerError(c, fmt.Sprintf("Failed to delete receipt: %v", err))
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "500",
-			"message": fmt.Sprintf("Failed to delete receipt: %v", err),
-		})
 		return
 	}
 
-	// Return success with no content
-	c.Status(http.StatusNoContent)
+	respondNoContent(c)
 }
 
 // GetReceiptItems handles the GET /receipts/{receiptId}/items endpoint
@@ -537,54 +469,42 @@ func (h *ReceiptHandler) GetMonthlyComparison(c *gin.Context) {
 // Helper functions
 
 // validateReceiptInput validates required fields in a receipt
-func validateReceiptInput(receipt *domain.Receipt) []gin.H {
-	var errors []gin.H
+func validateReceiptInput(receipt *domain.Receipt) []model.ErrorDetail {
+	var errors []model.ErrorDetail
 
 	if receipt.Merchant == "" {
-		errors = append(errors, gin.H{
-			"field":   "merchant",
-			"message": "Merchant is required",
-		})
+		errors = append(errors, newErrorDetail("merchant", "Merchant is required"))
 	}
 
 	if receipt.Date.IsZero() {
-		errors = append(errors, gin.H{
-			"field":   "date",
-			"message": "Date is required",
-		})
+		errors = append(errors, newErrorDetail("date", "Date is required"))
 	}
 
 	if receipt.Total <= 0 {
-		errors = append(errors, gin.H{
-			"field":   "total",
-			"message": "Total must be greater than zero",
-		})
+		errors = append(errors, newErrorDetail("total", "Total must be greater than zero"))
 	}
 
 	if len(receipt.Items) == 0 {
-		errors = append(errors, gin.H{
-			"field":   "items",
-			"message": "At least one item is required",
-		})
+		errors = append(errors, newErrorDetail("items", "At least one item is required"))
 	} else {
 		for i, item := range receipt.Items {
 			if item.Name == "" {
-				errors = append(errors, gin.H{
-					"field":   fmt.Sprintf("items[%d].name", i),
-					"message": "Item name is required",
-				})
+				errors = append(errors, newErrorDetail(
+					fmt.Sprintf("items[%d].name", i),
+					"Item name is required",
+				))
 			}
 			if item.Quantity <= 0 {
-				errors = append(errors, gin.H{
-					"field":   fmt.Sprintf("items[%d].qty", i),
-					"message": "Item quantity must be greater than zero",
-				})
+				errors = append(errors, newErrorDetail(
+					fmt.Sprintf("items[%d].qty", i),
+					"Item quantity must be greater than zero",
+				))
 			}
 			if item.Price < 0 {
-				errors = append(errors, gin.H{
-					"field":   fmt.Sprintf("items[%d].price", i),
-					"message": "Item price cannot be negative",
-				})
+				errors = append(errors, newErrorDetail(
+					fmt.Sprintf("items[%d].price", i),
+					"Item price cannot be negative",
+				))
 			}
 		}
 	}

@@ -13,10 +13,11 @@ import (
 
 // AIProcessorService implements the InvoiceProcessorServicer interface using OpenRouter AI
 type AIProcessorService struct {
-	client      *openrouter.Client
-	maxWorkers  int
-	workerQueue chan struct{}
-	repository  repository.InvoiceRepository
+	client       *openrouter.Client
+	maxWorkers   int
+	workerQueue  chan struct{}
+	repository   repository.InvoiceRepository
+	shutdownOnce sync.Once
 }
 
 // NewAIProcessorService creates a new AI-based invoice processor service
@@ -118,5 +119,8 @@ func (s *AIProcessorService) ProcessInvoiceBatch(ctx context.Context, requests [
 // Shutdown implements the shutdown method from InvoiceProcessorServicer interface
 func (s *AIProcessorService) Shutdown() {
 	// Clean up any resources if needed
-	close(s.workerQueue)
+	// Use sync.Once to ensure the channel is only closed once
+	s.shutdownOnce.Do(func() {
+		close(s.workerQueue)
+	})
 }
