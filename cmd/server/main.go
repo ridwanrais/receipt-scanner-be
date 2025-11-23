@@ -71,7 +71,6 @@ func main() {
 	// Initialize PostgreSQL database connection
 	var db *database.PostgresDB
 	var receiptRepo repository.ReceiptRepository
-	var invoiceRepo repository.InvoiceRepository
 
 	// Require database connection - exit if not available
 	if cfg.PostgresDBURL == "" {
@@ -88,25 +87,17 @@ func main() {
 	receiptRepo = repository.NewPostgresReceiptRepository(db.GetPool())
 	log.Println("Successfully connected to PostgreSQL database.")
 
-	// For now, use the SupabaseRepository for invoices until we fully migrate
-	invoiceRepo = repository.NewSupabaseRepository(openRouterClient)
-
 	// Initialize services
 	log.Println("Initializing services...")
 	receiptService := service.NewReceiptService(receiptRepo, openRouterClient, cfg.MaxWorkers)
 
-	// For backward compatibility, create the AI processor service
-	processorService := service.NewAIProcessorService(openRouterClient, cfg.MaxWorkers)
-	processorService.SetRepository(invoiceRepo)
-
 	// Initialize handlers
 	log.Println("Initializing API handlers...")
 	receiptHandler := handler.NewReceiptHandler(receiptService)
-	invoiceHandler := handler.NewInvoiceHandler(processorService)
 
 	// Create and configure server
 	log.Println("Configuring server...")
-	appServer := server.NewServer(cfg, invoiceHandler)
+	appServer := server.NewServer(cfg)
 
 	// Set the receipt handler and service
 	appServer.SetReceiptHandler(receiptHandler)
@@ -114,9 +105,6 @@ func main() {
 
 	// Register receipt API routes
 	appServer.RegisterReceiptRoutes()
-
-	// Set processor service in the server for clean shutdown
-	appServer.SetProcessorService(processorService)
 
 	// Start server in a goroutine so we can handle shutdown gracefully
 	serverErr := make(chan error, 1)

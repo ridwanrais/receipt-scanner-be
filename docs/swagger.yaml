@@ -82,64 +82,6 @@ definitions:
       status:
         type: string
     type: object
-  model.InvoiceDTO:
-    properties:
-      discount:
-        type: number
-      due_date:
-        description: 'Format: YYYY-MM-DD'
-        type: string
-      invoice_date:
-        description: 'Format: YYYY-MM-DD'
-        type: string
-      invoice_number:
-        type: string
-      items:
-        items:
-          $ref: '#/definitions/model.LineItemDTO'
-        type: array
-      subtotal:
-        type: number
-      tax_amount:
-        type: number
-      tax_rate_percent:
-        type: number
-      total_due:
-        type: number
-      vendor_name:
-        type: string
-    type: object
-  model.InvoiceErrorResponse:
-    properties:
-      error:
-        type: string
-      success:
-        type: boolean
-    type: object
-  model.InvoiceSuccessResponse:
-    properties:
-      invoice:
-        $ref: '#/definitions/model.InvoiceDTO'
-      success:
-        type: boolean
-    type: object
-  model.LineItemDTO:
-    properties:
-      category:
-        type: string
-      description:
-        type: string
-      details:
-        items:
-          type: string
-        type: array
-      quantity:
-        type: number
-      total:
-        type: number
-      unit_price:
-        type: number
-    type: object
   model.MerchantSummary:
     properties:
       amount:
@@ -246,35 +188,6 @@ paths:
       summary: Get dashboard summary
       tags:
       - dashboard
-  /v1/invoices/process:
-    post:
-      consumes:
-      - multipart/form-data
-      description: Upload and process an invoice image to extract data using AI
-      parameters:
-      - description: Invoice image file
-        in: formData
-        name: file
-        required: true
-        type: file
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successfully processed invoice
-          schema:
-            $ref: '#/definitions/model.InvoiceSuccessResponse'
-        "400":
-          description: Bad request or configuration error
-          schema:
-            $ref: '#/definitions/model.InvoiceErrorResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/model.InvoiceErrorResponse'
-      summary: Process an invoice
-      tags:
-      - invoices
   /v1/receipts:
     get:
       consumes:

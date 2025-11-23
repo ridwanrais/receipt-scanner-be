@@ -19,19 +19,17 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// Server represents the HTTP server for the invoice processing service
+// Server represents the HTTP server for the receipt scanning service
 type Server struct {
 	router         *gin.Engine
 	httpServer     *http.Server
-	invoiceHandler *handler.InvoiceHandler
 	receiptHandler *handler.ReceiptHandler
-	processor      service.InvoiceProcessorServicer
 	receiptService service.ReceiptService
 	config         *config.Config
 }
 
 // NewServer creates and configures a new server instance
-func NewServer(cfg *config.Config, invoiceHandler *handler.InvoiceHandler) *Server {
+func NewServer(cfg *config.Config) *Server {
 	// Create router
 	router := gin.Default()
 
@@ -41,9 +39,8 @@ func NewServer(cfg *config.Config, invoiceHandler *handler.InvoiceHandler) *Serv
 
 	// Create server
 	server := &Server{
-		router:         router,
-		invoiceHandler: invoiceHandler,
-		config:         cfg,
+		router: router,
+		config: cfg,
 		httpServer: &http.Server{
 			Addr:    fmt.Sprintf(":%d", cfg.Port),
 			Handler: router,
@@ -68,19 +65,21 @@ func (s *Server) SetReceiptService(receiptService service.ReceiptService) {
 
 // setupRoutes configures all application routes
 func (s *Server) setupRoutes() {
-	// Register invoice processing routes with the provided handler
-	s.invoiceHandler.RegisterRoutes(s.router)
-
 	// Health check endpoint
 	s.router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"status":         "ok",
-			"processor_type": "ai", // We're using AI processor exclusively in the new architecture
+			"status": "ok",
 		})
 	})
 
-	// Swagger documentation endpoint
-	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// API documentation endpoints
+	// Access the Swagger UI at http://localhost:8080/api-docs/index.html
+	swaggerHandler := ginSwagger.WrapHandler(swaggerFiles.Handler)
+	s.router.GET("/api-docs/*any", swaggerHandler)
+
+	s.router.GET("/api-docs", func(c *gin.Context) {
+		c.Redirect(http.StatusFound, "/api-docs/index.html")
+	})
 }
 
 // RegisterReceiptRoutes registers the receipt API routes
@@ -115,11 +114,6 @@ func (s *Server) Start() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Shutdown the invoice processor service
-	if s.processor != nil {
-		s.processor.Shutdown()
-	}
-
 	// Shutdown server gracefully
 	if err := s.httpServer.Shutdown(ctx); err != nil {
 		return fmt.Errorf("server forced to shutdown: %w", err)
@@ -134,11 +128,6 @@ func (s *Server) Shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Shutdown processor service if available
-	if s.processor != nil {
-		s.processor.Shutdown()
-	}
-
 	// Shutdown receipt service if available (if it implements a shutdown method)
 	if shutdownable, ok := s.receiptService.(interface{ Shutdown() }); ok {
 		shutdownable.Shutdown()
@@ -146,9 +135,4 @@ func (s *Server) Shutdown() error {
 
 	// Shutdown server
 	return s.httpServer.Shutdown(ctx)
-}
-
-// SetProcessorService sets the invoice processor service reference for shutdown purposes
-func (s *Server) SetProcessorService(processor service.InvoiceProcessorServicer) {
-	s.processor = processor
 }
