@@ -36,6 +36,10 @@ func NewServer(cfg *config.Config) *Server {
 	// Add middleware
 	router.Use(gin.Recovery())
 	router.Use(middleware.CORS())
+	router.Use(middleware.RequestResponseLogger(middleware.LoggerConfig{
+		Format: cfg.LogFormat,
+		Level:  cfg.LogLevel,
+	}))
 
 	// Create server
 	server := &Server{

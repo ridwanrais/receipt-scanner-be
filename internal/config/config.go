@@ -30,6 +30,10 @@ type Config struct {
 	// Application configuration
 	MaxWorkers  int
 	APIBasePath string
+
+	// Logging configuration
+	LogFormat string // "json" or "pretty"
+	LogLevel  string // "debug", "info", "warn", "error"
 }
 
 // LoadConfig loads configuration from environment variables
@@ -56,6 +60,9 @@ func LoadConfig() (*Config, error) {
 
 		MaxWorkers:  getEnvInt("MAX_WORKERS", 5),
 		APIBasePath: getEnvString("API_BASE_PATH", "/v1"),
+
+		LogFormat: getEnvString("LOG_FORMAT", "json"),
+		LogLevel:  getEnvString("LOG_LEVEL", "info"),
 	}
 
 	return config, nil

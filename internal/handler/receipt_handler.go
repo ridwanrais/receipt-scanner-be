@@ -50,6 +50,9 @@ func (h *ReceiptHandler) ScanReceipt(c *gin.Context) {
 	// Read file contents
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
+		logError(c, "failed_to_read_file", err, map[string]interface{}{
+			"error_type": "file_read_error",
+		})
 		respondInternalServerError(c, ErrFileProcessing)
 		return
 	}
@@ -57,6 +60,13 @@ func (h *ReceiptHandler) ScanReceipt(c *gin.Context) {
 	// Process receipt image
 	receipt, err := h.receiptService.ScanReceipt(c.Request.Context(), fileBytes)
 	if err != nil {
+		// Log the actual error with context
+		logError(c, "failed_to_scan_receipt", err, map[string]interface{}{
+			"error_type":    "service_error",
+			"error_message": err.Error(),
+			"file_size":     len(fileBytes),
+		})
+
 		// Check for specific error types
 		if strings.Contains(fmt.Sprintf("%v", err), "not configured") {
 			respondBadRequest(c, fmt.Sprintf("Configuration error: %v", err))

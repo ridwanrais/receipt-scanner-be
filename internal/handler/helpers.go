@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"strconv"
 	"time"
@@ -91,4 +93,37 @@ func buildValidationErrors(errors map[string]string) []model.ErrorDetail {
 		})
 	}
 	return details
+}
+
+// logError logs structured error information as JSON
+func logError(c *gin.Context, operation string, err error, additionalContext map[string]interface{}) {
+	logEntry := map[string]interface{}{
+		"timestamp":  time.Now().Format(time.RFC3339),
+		"level":      "error",
+		"operation":  operation,
+		"error":      err.Error(),
+		"method":     c.Request.Method,
+		"path":       c.Request.URL.Path,
+		"client_ip":  c.ClientIP(),
+		"user_agent": c.Request.UserAgent(),
+	}
+
+	// Add request ID if available
+	if requestID := c.GetString("request_id"); requestID != "" {
+		logEntry["request_id"] = requestID
+	}
+
+	// Merge additional context
+	for key, value := range additionalContext {
+		logEntry[key] = value
+	}
+
+	// Marshal to JSON and log
+	jsonBytes, marshalErr := json.Marshal(logEntry)
+	if marshalErr != nil {
+		log.Printf(`{"level":"error","message":"failed to marshal error log","error":"%v"}`, marshalErr)
+		return
+	}
+
+	log.Println(string(jsonBytes))
 }
