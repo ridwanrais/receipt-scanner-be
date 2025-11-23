@@ -60,12 +60,14 @@ func main() {
 
 	// Initialize OpenRouter client for receipt processing
 	openRouterClient := openrouter.NewClient(&openrouter.Config{
-		APIKey:         cfg.OpenRouterAPIKey,
-		ModelID:        cfg.OpenRouterModelID,
-		Timeout:        cfg.OpenRouterTimeout,
-		SupabaseURL:    cfg.SupabaseURL,
-		SupabaseBucket: cfg.SupabaseBucket,
-		SupabaseAPIKey: cfg.SupabaseAPIKey,
+		APIKey:            cfg.OpenRouterAPIKey,
+		ModelID:           cfg.OpenRouterModelID,
+		Timeout:           cfg.OpenRouterTimeout,
+		S3Endpoint:        cfg.SupabaseS3Endpoint,
+		S3AccessKeyID:     cfg.SupabaseAccessKeyID,
+		S3AccessKeySecret: cfg.SupabaseAccessKeySecret,
+		SupabaseBucket:    cfg.SupabaseBucket,
+		S3Region:          cfg.SupabaseRegion,
 	})
 
 	// Initialize PostgreSQL database connection

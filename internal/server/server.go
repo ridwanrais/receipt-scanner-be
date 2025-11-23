@@ -46,8 +46,10 @@ func NewServer(cfg *config.Config) *Server {
 		router: router,
 		config: cfg,
 		httpServer: &http.Server{
-			Addr:    fmt.Sprintf(":%d", cfg.Port),
-			Handler: router,
+			Addr:         fmt.Sprintf(":%d", cfg.Port),
+			Handler:      router,
+			ReadTimeout:  cfg.ReadTimeout,
+			WriteTimeout: cfg.WriteTimeout,
 		},
 	}
 

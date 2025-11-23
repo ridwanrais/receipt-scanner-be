@@ -3,63 +3,49 @@ package openrouter
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"net/http"
+	"strings"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-// UploadImageToSupabase uploads an image to Supabase storage and returns the public URL
+// UploadImageToSupabase uploads an image to Supabase S3-compatible storage and returns the public URL
 func (c *Client) UploadImageToSupabase(imageData []byte, filename string) (string, error) {
-	// Check if Supabase URL is configured
-	if c.supabaseURL == "" {
+	// Check if S3 client is configured
+	if c.s3Client == nil {
 		return "", &OpenRouterError{
-			Op:  "check_supabase_config",
-			Err: fmt.Errorf("Supabase URL is not configured"),
+			Op:  "check_s3_config",
+			Err: fmt.Errorf("S3 client is not configured. Please check SUPABASE_S3_ENDPOINT, SUPABASE_ACCESS_KEY_ID, and SUPABASE_ACCESS_KEY_SECRET"),
 		}
 	}
 
-	// Check if Supabase API key is configured
-	if c.supabaseAPIKey == "" {
+	// Check if bucket is configured
+	if c.supabaseBucket == "" {
 		return "", &OpenRouterError{
-			Op:  "check_supabase_config",
-			Err: fmt.Errorf("Supabase API key is not configured"),
+			Op:  "check_bucket_config",
+			Err: fmt.Errorf("Supabase bucket is not configured"),
 		}
 	}
 
-	// Construct the Supabase storage URL
-	url := fmt.Sprintf("%s/storage/v1/object/%s/%s", c.supabaseURL, c.supabaseBucket, filename)
-
-	// Create a new HTTP request
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(imageData))
+	// Upload the file to S3
+	_, err := c.s3Client.PutObject(&s3.PutObjectInput{
+		Bucket:        aws.String(c.supabaseBucket),
+		Key:           aws.String(filename),
+		Body:          bytes.NewReader(imageData),
+		ContentType:   aws.String("image/png"),
+		ContentLength: aws.Int64(int64(len(imageData))),
+	})
 	if err != nil {
 		return "", &OpenRouterError{
-			Op:  "create_upload_request",
-			Err: fmt.Errorf("failed to create request: %w", err),
+			Op:  "upload_to_s3",
+			Err: fmt.Errorf("failed to upload to S3: %w", err),
 		}
 	}
 
-	// Set headers
-	req.Header.Set("Content-Type", "application/octet-stream")
-	req.Header.Set("Authorization", "Bearer "+c.supabaseAPIKey)
+	// Construct the public URL
+	// Format: https://{project-ref}.storage.supabase.co/storage/v1/object/public/{bucket}/{filename}
+	baseURL := strings.Replace(c.s3Endpoint, "/storage/v1/s3", "", 1)
+	publicURL := fmt.Sprintf("%s/storage/v1/object/public/%s/%s", baseURL, c.supabaseBucket, filename)
 
-	// Send the request
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return "", &OpenRouterError{
-			Op:  "send_upload_request",
-			Err: fmt.Errorf("failed to send request: %w", err),
-		}
-	}
-	defer resp.Body.Close()
-
-	// Check for error status code
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		respBody, _ := io.ReadAll(resp.Body)
-		return "", &OpenRouterError{
-			Op:  "check_upload_response",
-			Err: fmt.Errorf("API error: %s - %s", resp.Status, string(respBody)),
-		}
-	}
-
-	// Return the public URL of the uploaded image
-	return fmt.Sprintf("%s/storage/v1/object/public/%s/%s", c.supabaseURL, c.supabaseBucket, filename), nil
+	return publicURL, nil
 }

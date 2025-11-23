@@ -21,11 +21,13 @@ type Config struct {
 	OpenRouterModelID string
 	OpenRouterTimeout time.Duration
 
-	// Supabase configuration
-	SupabaseURL    string
-	SupabaseAPIKey string
-	SupabaseBucket string
-	PostgresDBURL  string
+	// Supabase S3-compatible storage configuration
+	SupabaseS3Endpoint      string
+	SupabaseAccessKeyID     string
+	SupabaseAccessKeySecret string
+	SupabaseBucket          string
+	SupabaseRegion          string
+	PostgresDBURL           string
 
 	// Application configuration
 	MaxWorkers  int
@@ -53,10 +55,12 @@ func LoadConfig() (*Config, error) {
 		OpenRouterModelID: getEnvString("OPENROUTER_MODEL_ID", "mistralai/mistral-7b-instruct"),
 		OpenRouterTimeout: time.Duration(getEnvInt("OPENROUTER_TIMEOUT", 60)) * time.Second,
 
-		SupabaseURL:    os.Getenv("SUPABASE_URL"),
-		SupabaseAPIKey: os.Getenv("SUPABASE_API_KEY"),
-		SupabaseBucket: getEnvString("SUPABASE_BUCKET", "receipts"),
-		PostgresDBURL:  os.Getenv("POSTGRES_DB_URL"),
+		SupabaseS3Endpoint:      os.Getenv("SUPABASE_S3_ENDPOINT"),
+		SupabaseAccessKeyID:     os.Getenv("SUPABASE_ACCESS_KEY_ID"),
+		SupabaseAccessKeySecret: os.Getenv("SUPABASE_ACCESS_KEY_SECRET"),
+		SupabaseBucket:          getEnvString("SUPABASE_BUCKET", "invoice-images"),
+		SupabaseRegion:          getEnvString("SUPABASE_REGION", "ap-southeast-1"),
+		PostgresDBURL:           os.Getenv("POSTGRES_DB_URL"),
 
 		MaxWorkers:  getEnvInt("MAX_WORKERS", 5),
 		APIBasePath: getEnvString("API_BASE_PATH", "/v1"),

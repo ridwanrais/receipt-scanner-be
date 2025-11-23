@@ -14,17 +14,10 @@ import (
 // ExtractInvoiceData extracts structured data from an invoice image
 func (c *Client) ExtractInvoiceData(imageData []byte) (*domain.Invoice, error) {
 	// Check for required configuration
-	if c.supabaseURL == "" {
+	if c.s3Client == nil {
 		return nil, &OpenRouterError{
 			Op:  "validate_configuration",
-			Err: fmt.Errorf("Supabase URL is not configured. Please set SUPABASE_URL environment variable"),
-		}
-	}
-
-	if c.supabaseAPIKey == "" {
-		return nil, &OpenRouterError{
-			Op:  "validate_configuration",
-			Err: fmt.Errorf("Supabase API key is not configured. Please set SUPABASE_API_KEY environment variable"),
+			Err: fmt.Errorf("S3 client is not configured. Please set SUPABASE_S3_ENDPOINT, SUPABASE_ACCESS_KEY_ID, and SUPABASE_ACCESS_KEY_SECRET environment variables"),
 		}
 	}
 
