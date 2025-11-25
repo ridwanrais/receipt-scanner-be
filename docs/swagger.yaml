@@ -29,6 +29,8 @@ definitions:
     properties:
       category:
         type: string
+      currency:
+        type: string
       id:
         type: string
       name:
@@ -105,6 +107,8 @@ definitions:
   model.ReceiptItemResponse:
     properties:
       category:
+        type: string
+      currency:
         type: string
       id:
         type: string

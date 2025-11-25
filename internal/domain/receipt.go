@@ -10,6 +10,7 @@ type ReceiptItem struct {
 	Name     string  `json:"name"`
 	Quantity int     `json:"qty"`
 	Price    float64 `json:"price"`
+	Currency string  `json:"currency,omitempty"`
 	Category string  `json:"category,omitempty"`
 }
 

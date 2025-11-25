@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
+	"sort"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -30,18 +31,46 @@ func main() {
 	}
 	defer pool.Close()
 
-	// Read migration file
-	migrationFile := "scripts/migrations/001_create_initial_schema.sql"
-	migrationSQL, err := ioutil.ReadFile(migrationFile)
+	// Get all migration files
+	migrationsDir := "scripts/migrations"
+	files, err := os.ReadDir(migrationsDir)
 	if err != nil {
-		log.Fatalf("Unable to read migration file: %v", err)
+		log.Fatalf("Unable to read migrations directory: %v", err)
 	}
 
-	// Execute migration
-	_, err = pool.Exec(context.Background(), string(migrationSQL))
-	if err != nil {
-		log.Fatalf("Failed to execute migration: %v", err)
+	// Filter and sort SQL files
+	var migrationFiles []string
+	for _, file := range files {
+		if !file.IsDir() && filepath.Ext(file.Name()) == ".sql" {
+			migrationFiles = append(migrationFiles, file.Name())
+		}
+	}
+	sort.Strings(migrationFiles)
+
+	if len(migrationFiles) == 0 {
+		log.Println("No migration files found")
+		return
 	}
 
-	fmt.Println("Migration successfully executed!")
+	// Execute each migration file
+	for _, filename := range migrationFiles {
+		migrationPath := filepath.Join(migrationsDir, filename)
+		log.Printf("Executing migration: %s", filename)
+
+		migrationSQL, err := os.ReadFile(migrationPath)
+		if err != nil {
+			log.Fatalf("Unable to read migration file %s: %v", filename, err)
+		}
+
+		_, err = pool.Exec(context.Background(), string(migrationSQL))
+		if err != nil {
+			log.Printf("Warning: Migration %s failed: %v", filename, err)
+			log.Printf("Continuing with next migration...")
+			continue
+		}
+
+		log.Printf("✓ Successfully executed: %s", filename)
+	}
+
+	fmt.Println("\nAll migrations completed!")
 }

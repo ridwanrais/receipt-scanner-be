@@ -44,6 +44,11 @@ go build -o bin/invoice-processor-service ./cmd/server
 ./bin/invoice-processor-service
 ```
 
+### Expose locally with ngrok
+```bash
+ngrok http --url=catfish-right-tick.ngrok-free.app 8080
+```
+
 ### Run with Docker
 ```bash
 make docker-build

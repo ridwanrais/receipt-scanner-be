@@ -51,10 +51,10 @@ func (r *PostgresReceiptRepository) CreateReceipt(ctx context.Context, receipt *
 	for i := range receipt.Items {
 		item := &receipt.Items[i]
 		err = tx.QueryRow(ctx, `
-			INSERT INTO receipt_items (receipt_id, name, qty, price, category)
-			VALUES ($1, $2, $3, $4, $5)
+			INSERT INTO receipt_items (receipt_id, name, qty, price, currency, category)
+			VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING id, created_at, updated_at
-		`, receiptID, item.Name, item.Quantity, item.Price, item.Category).Scan(
+		`, receiptID, item.Name, item.Quantity, item.Price, item.Currency, item.Category).Scan(
 			&item.ID, &time.Time{}, &time.Time{}, // We don't need the timestamps for items, but they're returned
 		)
 		if err != nil {
@@ -91,7 +91,7 @@ func (r *PostgresReceiptRepository) GetReceiptByID(ctx context.Context, receiptI
 
 	// Query receipt items
 	rows, err := r.db.Query(ctx, `
-		SELECT id, name, qty, price, category
+		SELECT id, name, qty, price, currency, category
 		FROM receipt_items
 		WHERE receipt_id = $1
 		ORDER BY id
@@ -105,7 +105,7 @@ func (r *PostgresReceiptRepository) GetReceiptByID(ctx context.Context, receiptI
 	receipt.Items = []domain.ReceiptItem{}
 	for rows.Next() {
 		var item domain.ReceiptItem
-		if err := rows.Scan(&item.ID, &item.Name, &item.Quantity, &item.Price, &item.Category); err != nil {
+		if err := rows.Scan(&item.ID, &item.Name, &item.Quantity, &item.Price, &item.Currency, &item.Category); err != nil {
 			return nil, fmt.Errorf("failed to scan receipt item: %w", err)
 		}
 		receipt.Items = append(receipt.Items, item)
@@ -150,10 +150,10 @@ func (r *PostgresReceiptRepository) UpdateReceipt(ctx context.Context, receipt *
 	for i := range receipt.Items {
 		item := &receipt.Items[i]
 		err = tx.QueryRow(ctx, `
-			INSERT INTO receipt_items (receipt_id, name, qty, price, category)
-			VALUES ($1, $2, $3, $4, $5)
+			INSERT INTO receipt_items (receipt_id, name, qty, price, currency, category)
+			VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING id
-		`, receipt.ID, item.Name, item.Quantity, item.Price, item.Category).Scan(&item.ID)
+		`, receipt.ID, item.Name, item.Quantity, item.Price, item.Currency, item.Category).Scan(&item.ID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to insert receipt item: %w", err)
 		}
@@ -301,7 +301,7 @@ func (r *PostgresReceiptRepository) ListReceipts(ctx context.Context, filter dom
 	}
 
 	itemQuery := fmt.Sprintf(`
-		SELECT receipt_id, id, name, qty, price, category
+		SELECT receipt_id, id, name, qty, price, currency, category
 		FROM receipt_items
 		WHERE receipt_id IN (%s)
 		ORDER BY id
@@ -318,7 +318,7 @@ func (r *PostgresReceiptRepository) ListReceipts(ctx context.Context, filter dom
 		var receiptID string
 		var item domain.ReceiptItem
 		if err := itemRows.Scan(
-			&receiptID, &item.ID, &item.Name, &item.Quantity, &item.Price, &item.Category,
+			&receiptID, &item.ID, &item.Name, &item.Quantity, &item.Price, &item.Currency, &item.Category,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan receipt item: %w", err)
 		}
@@ -355,7 +355,7 @@ func (r *PostgresReceiptRepository) GetReceiptItems(ctx context.Context, receipt
 
 	// Query receipt items
 	rows, err := r.db.Query(ctx, `
-		SELECT id, name, qty, price, category
+		SELECT id, name, qty, price, currency, category
 		FROM receipt_items
 		WHERE receipt_id = $1
 		ORDER BY id
@@ -369,7 +369,7 @@ func (r *PostgresReceiptRepository) GetReceiptItems(ctx context.Context, receipt
 	items := []domain.ReceiptItem{}
 	for rows.Next() {
 		var item domain.ReceiptItem
-		if err := rows.Scan(&item.ID, &item.Name, &item.Quantity, &item.Price, &item.Category); err != nil {
+		if err := rows.Scan(&item.ID, &item.Name, &item.Quantity, &item.Price, &item.Currency, &item.Category); err != nil {
 			return nil, fmt.Errorf("failed to scan receipt item: %w", err)
 		}
 		items = append(items, item)

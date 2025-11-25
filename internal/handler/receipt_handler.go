@@ -625,6 +625,7 @@ func formatReceiptItemsResponse(items []domain.ReceiptItem) []gin.H {
 			"name":     item.Name,
 			"qty":      item.Quantity,
 			"price":    fmt.Sprintf("%.2f", item.Price),
+			"currency": item.Currency,
 			"category": item.Category,
 		}
 	}

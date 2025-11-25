@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/ridwanfathin/invoice-processor-service/internal/domain"
+	"github.com/ridwanfathin/invoice-processor-service/internal/mlxclient"
 	"github.com/ridwanfathin/invoice-processor-service/internal/openrouter"
 	"github.com/ridwanfathin/invoice-processor-service/internal/repository"
+	"github.com/ridwanfathin/invoice-processor-service/internal/storage"
 )
 
 // ReceiptServiceError represents an error in the receipt service
@@ -47,17 +49,23 @@ type ReceiptService interface {
 
 // ReceiptServiceImpl implements the ReceiptService interface
 type ReceiptServiceImpl struct {
-	repository   repository.ReceiptRepository
-	openAIClient *openrouter.Client
-	workerPool   chan struct{}
+	repository    repository.ReceiptRepository
+	openAIClient  *openrouter.Client
+	mlxClient     *mlxclient.Client
+	s3Uploader    *storage.S3Uploader
+	useMLXService bool
+	workerPool    chan struct{}
 }
 
 // NewReceiptService creates a new ReceiptService
-func NewReceiptService(repo repository.ReceiptRepository, openAIClient *openrouter.Client, maxWorkers int) ReceiptService {
+func NewReceiptService(repo repository.ReceiptRepository, openAIClient *openrouter.Client, mlxClient *mlxclient.Client, s3Uploader *storage.S3Uploader, useMLXService bool, maxWorkers int) ReceiptService {
 	return &ReceiptServiceImpl{
-		repository:   repo,
-		openAIClient: openAIClient,
-		workerPool:   make(chan struct{}, maxWorkers),
+		repository:    repo,
+		openAIClient:  openAIClient,
+		mlxClient:     mlxClient,
+		s3Uploader:    s3Uploader,
+		useMLXService: useMLXService,
+		workerPool:    make(chan struct{}, maxWorkers),
 	}
 }
 
@@ -79,12 +87,38 @@ func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte) 
 		}
 	}
 
-	// Use OpenAI to extract invoice data
-	invoiceData, err := s.openAIClient.ExtractInvoiceData(imageData)
-	if err != nil {
-		return nil, &ReceiptServiceError{
-			Op:  "extract_receipt_data",
-			Err: err,
+	// Extract invoice data using MLX or OpenRouter
+	var invoiceData *domain.Invoice
+	var err error
+
+	if s.useMLXService && s.mlxClient != nil && s.s3Uploader != nil {
+		// Upload image to S3 first
+		timestamp := time.Now().UnixNano()
+		filename := fmt.Sprintf("invoice_%d.png", timestamp)
+		imageURL, uploadErr := s.s3Uploader.UploadImage(imageData, filename)
+		if uploadErr != nil {
+			return nil, &ReceiptServiceError{
+				Op:  "upload_image_to_s3",
+				Err: uploadErr,
+			}
+		}
+
+		// Use MLX service with the S3 URL
+		invoiceData, err = s.mlxClient.ExtractInvoiceData(imageURL)
+		if err != nil {
+			return nil, &ReceiptServiceError{
+				Op:  "extract_receipt_data_mlx",
+				Err: err,
+			}
+		}
+	} else {
+		// Use OpenRouter to extract invoice data
+		invoiceData, err = s.openAIClient.ExtractInvoiceData(imageData)
+		if err != nil {
+			return nil, &ReceiptServiceError{
+				Op:  "extract_receipt_data_openrouter",
+				Err: err,
+			}
 		}
 	}
 
@@ -110,6 +144,7 @@ func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte) 
 			Name:     item.Description,
 			Quantity: int(item.Quantity), // Convert float64 to int
 			Price:    item.UnitPrice,
+			Currency: item.Currency,
 			Category: category,
 		}
 		receipt.Items = append(receipt.Items, receiptItem)

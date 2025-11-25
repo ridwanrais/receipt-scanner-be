@@ -427,6 +427,9 @@ const docTemplate = `{
                 "category": {
                     "type": "string"
                 },
+                "currency": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -544,6 +547,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "category": {
+                    "type": "string"
+                },
+                "currency": {
                     "type": "string"
                 },
                 "id": {

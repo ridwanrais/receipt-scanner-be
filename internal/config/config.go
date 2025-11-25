@@ -29,6 +29,11 @@ type Config struct {
 	SupabaseRegion          string
 	PostgresDBURL           string
 
+	// MLX Service configuration
+	UseMLXService bool
+	MLXServiceURL string
+	MLXTimeout    time.Duration
+
 	// Application configuration
 	MaxWorkers  int
 	APIBasePath string
@@ -61,6 +66,10 @@ func LoadConfig() (*Config, error) {
 		SupabaseBucket:          getEnvString("SUPABASE_BUCKET", "invoice-images"),
 		SupabaseRegion:          getEnvString("SUPABASE_REGION", "ap-southeast-1"),
 		PostgresDBURL:           os.Getenv("POSTGRES_DB_URL"),
+
+		UseMLXService: getEnvString("USE_MLX_SERVICE", "false") == "true",
+		MLXServiceURL: getEnvString("MLX_SERVICE_URL", "http://localhost:8000"),
+		MLXTimeout:    time.Duration(getEnvInt("MLX_TIMEOUT", 300)) * time.Second,
 
 		MaxWorkers:  getEnvInt("MAX_WORKERS", 5),
 		APIBasePath: getEnvString("API_BASE_PATH", "/v1"),

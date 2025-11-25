@@ -9,6 +9,7 @@ type LineItem struct {
 	Quantity    float64
 	UnitPrice   float64
 	Total       float64
+	Currency    string // Currency code (e.g., "IDR", "USD")
 	Category    string // Added for LLM and Go mapping
 }
 

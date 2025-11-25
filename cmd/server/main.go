@@ -12,10 +12,12 @@ import (
 	"github.com/ridwanfathin/invoice-processor-service/internal/config"
 	"github.com/ridwanfathin/invoice-processor-service/internal/database"
 	"github.com/ridwanfathin/invoice-processor-service/internal/handler"
+	"github.com/ridwanfathin/invoice-processor-service/internal/mlxclient"
 	"github.com/ridwanfathin/invoice-processor-service/internal/openrouter"
 	"github.com/ridwanfathin/invoice-processor-service/internal/repository"
 	"github.com/ridwanfathin/invoice-processor-service/internal/server"
 	"github.com/ridwanfathin/invoice-processor-service/internal/service"
+	"github.com/ridwanfathin/invoice-processor-service/internal/storage"
 )
 
 // @title Receipt Scanner API
@@ -70,6 +72,34 @@ func main() {
 		S3Region:          cfg.SupabaseRegion,
 	})
 
+	// Initialize S3 uploader for image storage
+	var s3Uploader *storage.S3Uploader
+	if cfg.SupabaseS3Endpoint != "" {
+		log.Println("Initializing S3 uploader...")
+		var err error
+		s3Uploader, err = storage.NewS3Uploader(&storage.Config{
+			Endpoint:        cfg.SupabaseS3Endpoint,
+			AccessKeyID:     cfg.SupabaseAccessKeyID,
+			AccessKeySecret: cfg.SupabaseAccessKeySecret,
+			Bucket:          cfg.SupabaseBucket,
+			Region:          cfg.SupabaseRegion,
+		})
+		if err != nil {
+			log.Printf("Warning: Failed to initialize S3 uploader: %v", err)
+		}
+	}
+
+	// Initialize MLX client if enabled
+	var mlxClient *mlxclient.Client
+	if cfg.UseMLXService {
+		log.Println("MLX service is enabled, initializing MLX client...")
+		mlxClient = mlxclient.NewClient(&mlxclient.Config{
+			BaseURL: cfg.MLXServiceURL,
+			Timeout: cfg.MLXTimeout,
+		})
+		log.Printf("MLX client initialized with URL: %s", cfg.MLXServiceURL)
+	}
+
 	// Initialize PostgreSQL database connection
 	var db *database.PostgresDB
 	var receiptRepo repository.ReceiptRepository
@@ -91,7 +121,7 @@ func main() {
 
 	// Initialize services
 	log.Println("Initializing services...")
-	receiptService := service.NewReceiptService(receiptRepo, openRouterClient, cfg.MaxWorkers)
+	receiptService := service.NewReceiptService(receiptRepo, openRouterClient, mlxClient, s3Uploader, cfg.UseMLXService, cfg.MaxWorkers)
 
 	// Initialize handlers
 	log.Println("Initializing API handlers...")
