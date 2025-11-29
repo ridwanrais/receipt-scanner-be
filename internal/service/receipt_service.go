@@ -29,7 +29,7 @@ func (e *ReceiptServiceError) Error() string {
 // ReceiptService defines the interface for receipt-related business logic
 type ReceiptService interface {
 	// CRUD operations
-	ScanReceipt(ctx context.Context, imageData []byte) (*domain.Receipt, error)
+	ScanReceipt(ctx context.Context, imageData []byte, userID string) (*domain.Receipt, error)
 	CreateReceipt(ctx context.Context, receipt *domain.Receipt) (*domain.Receipt, error)
 	GetReceiptByID(ctx context.Context, receiptID string) (*domain.Receipt, error)
 	UpdateReceipt(ctx context.Context, receipt *domain.Receipt) (*domain.Receipt, error)
@@ -70,7 +70,7 @@ func NewReceiptService(repo repository.ReceiptRepository, openAIClient *openrout
 }
 
 // ScanReceipt processes an image to extract receipt data
-func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte) (*domain.Receipt, error) {
+func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte, userID string) (*domain.Receipt, error) {
 	// Acquire worker from pool
 	select {
 	case s.workerPool <- struct{}{}:
@@ -124,6 +124,7 @@ func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte) 
 
 	// Convert domain.Invoice to domain.Receipt
 	receipt := &domain.Receipt{
+		UserID:    userID,
 		Merchant:  invoiceData.VendorName,
 		Date:      invoiceData.InvoiceDate.Time,
 		Total:     invoiceData.TotalDue,

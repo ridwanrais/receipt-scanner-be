@@ -39,6 +39,13 @@ func NewReceiptHandler(receiptService service.ReceiptService) *ReceiptHandler {
 // @Failure 500 {object} model.ErrorResponse "Internal server error"
 // @Router /v1/receipts/scan [post]
 func (h *ReceiptHandler) ScanReceipt(c *gin.Context) {
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		respondUnauthorized(c, "User not authenticated")
+		return
+	}
+
 	// Get receipt image from form data
 	file, _, err := getFormFile(c, "receiptImage")
 	if err != nil {
@@ -58,7 +65,7 @@ func (h *ReceiptHandler) ScanReceipt(c *gin.Context) {
 	}
 
 	// Process receipt image
-	receipt, err := h.receiptService.ScanReceipt(c.Request.Context(), fileBytes)
+	receipt, err := h.receiptService.ScanReceipt(c.Request.Context(), fileBytes, userID.(string))
 	if err != nil {
 		// Log the actual error with context
 		logError(c, "failed_to_scan_receipt", err, map[string]interface{}{
@@ -93,11 +100,21 @@ func (h *ReceiptHandler) ScanReceipt(c *gin.Context) {
 // @Failure 500 {object} model.ErrorResponse "Internal server error"
 // @Router /v1/receipts [post]
 func (h *ReceiptHandler) CreateReceipt(c *gin.Context) {
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		respondUnauthorized(c, "User not authenticated")
+		return
+	}
+
 	var input domain.Receipt
 	if err := bindJSON(c, &input); err != nil {
 		respondBadRequest(c, ErrInvalidInput)
 		return
 	}
+
+	// Set user ID
+	input.UserID = userID.(string)
 
 	// Validate required fields
 	if validationErrors := validateReceiptInput(&input); len(validationErrors) > 0 {

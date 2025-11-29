@@ -17,6 +17,7 @@ type ReceiptItem struct {
 // Receipt represents a scanned or manually entered receipt
 type Receipt struct {
 	ID        string        `json:"id"`
+	UserID    string        `json:"user_id"`
 	Merchant  string        `json:"merchant"`
 	Date      time.Time     `json:"date"`
 	Total     float64       `json:"total"`

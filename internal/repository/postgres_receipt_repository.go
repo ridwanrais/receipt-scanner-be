@@ -35,10 +35,10 @@ func (r *PostgresReceiptRepository) CreateReceipt(ctx context.Context, receipt *
 	// Insert receipt
 	var receiptID string
 	err = tx.QueryRow(ctx, `
-		INSERT INTO receipts (merchant, date, total, tax, subtotal, image_url)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO receipts (user_id, merchant, date, total, tax, subtotal, image_url)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, created_at, updated_at
-	`, receipt.Merchant, receipt.Date, receipt.Total, receipt.Tax, receipt.Subtotal, receipt.ImageURL).Scan(
+	`, receipt.UserID, receipt.Merchant, receipt.Date, receipt.Total, receipt.Tax, receipt.Subtotal, receipt.ImageURL).Scan(
 		&receiptID, &receipt.CreatedAt, &receipt.UpdatedAt,
 	)
 	if err != nil {
@@ -75,11 +75,11 @@ func (r *PostgresReceiptRepository) GetReceiptByID(ctx context.Context, receiptI
 	// Query receipt
 	var receipt domain.Receipt
 	err := r.db.QueryRow(ctx, `
-		SELECT id, merchant, date, total, tax, subtotal, image_url, created_at, updated_at
+		SELECT id, user_id, merchant, date, total, tax, subtotal, image_url, created_at, updated_at
 		FROM receipts
 		WHERE id = $1
 	`, receiptID).Scan(
-		&receipt.ID, &receipt.Merchant, &receipt.Date, &receipt.Total, &receipt.Tax,
+		&receipt.ID, &receipt.UserID, &receipt.Merchant, &receipt.Date, &receipt.Total, &receipt.Tax,
 		&receipt.Subtotal, &receipt.ImageURL, &receipt.CreatedAt, &receipt.UpdatedAt,
 	)
 	if err != nil {
@@ -251,7 +251,7 @@ func (r *PostgresReceiptRepository) ListReceipts(ctx context.Context, filter dom
 
 	// Query receipts with pagination
 	query := fmt.Sprintf(`
-		SELECT id, merchant, date, total, tax, subtotal, image_url, created_at, updated_at
+		SELECT id, user_id, merchant, date, total, tax, subtotal, image_url, created_at, updated_at
 		FROM receipts
 		%s
 		ORDER BY date DESC
@@ -271,7 +271,7 @@ func (r *PostgresReceiptRepository) ListReceipts(ctx context.Context, filter dom
 	for rows.Next() {
 		var receipt domain.Receipt
 		if err := rows.Scan(
-			&receipt.ID, &receipt.Merchant, &receipt.Date, &receipt.Total, &receipt.Tax,
+			&receipt.ID, &receipt.UserID, &receipt.Merchant, &receipt.Date, &receipt.Total, &receipt.Tax,
 			&receipt.Subtotal, &receipt.ImageURL, &receipt.CreatedAt, &receipt.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan receipt: %w", err)
