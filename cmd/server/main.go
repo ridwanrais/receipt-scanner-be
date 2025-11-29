@@ -12,6 +12,7 @@ import (
 	"github.com/ridwanfathin/invoice-processor-service/internal/config"
 	"github.com/ridwanfathin/invoice-processor-service/internal/database"
 	"github.com/ridwanfathin/invoice-processor-service/internal/handler"
+	"github.com/ridwanfathin/invoice-processor-service/internal/middleware"
 	"github.com/ridwanfathin/invoice-processor-service/internal/mlxclient"
 	"github.com/ridwanfathin/invoice-processor-service/internal/openrouter"
 	"github.com/ridwanfathin/invoice-processor-service/internal/repository"
@@ -35,9 +36,10 @@ import (
 // @BasePath /
 // @schemes http https
 
-// @securityDefinitions.apikey ApiKeyAuth
+// @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 
 func main() {
 	// Create a context that will be canceled on interrupt
@@ -103,6 +105,7 @@ func main() {
 	// Initialize PostgreSQL database connection
 	var db *database.PostgresDB
 	var receiptRepo repository.ReceiptRepository
+	var userRepo repository.UserRepository
 
 	// Require database connection - exit if not available
 	if cfg.PostgresDBURL == "" {
@@ -117,15 +120,29 @@ func main() {
 
 	defer db.Close()
 	receiptRepo = repository.NewPostgresReceiptRepository(db.GetPool())
+	userRepo = repository.NewPostgresUserRepository(db.GetPool())
 	log.Println("Successfully connected to PostgreSQL database.")
 
 	// Initialize services
 	log.Println("Initializing services...")
 	receiptService := service.NewReceiptService(receiptRepo, openRouterClient, mlxClient, s3Uploader, cfg.UseMLXService, cfg.MaxWorkers)
 
+	authService := service.NewAuthService(service.AuthServiceConfig{
+		UserRepo:              userRepo,
+		GoogleClientID:        cfg.GoogleClientIDWeb,
+		GoogleClientSecret:    cfg.GoogleClientSecretWeb,
+		GoogleRedirectURL:     cfg.GoogleRedirectURLWeb,
+		GoogleClientIDAndroid: cfg.GoogleClientIDAndroid,
+		GoogleClientIDIOS:     cfg.GoogleClientIDIOS,
+		JWTSecret:             cfg.JWTSecret,
+		JWTAccessExpiration:   cfg.JWTAccessExpiration,
+		JWTRefreshExpiration:  cfg.JWTRefreshExpiration,
+	})
+
 	// Initialize handlers
 	log.Println("Initializing API handlers...")
 	receiptHandler := handler.NewReceiptHandler(receiptService)
+	authHandler := handler.NewAuthHandler(authService, cfg.FrontendURL)
 
 	// Create and configure server
 	log.Println("Configuring server...")
@@ -135,8 +152,12 @@ func main() {
 	appServer.SetReceiptHandler(receiptHandler)
 	appServer.SetReceiptService(receiptService)
 
-	// Register receipt API routes
-	appServer.RegisterReceiptRoutes()
+	// Create auth middleware
+	authMiddleware := middleware.AuthMiddleware(authService)
+
+	// Register API routes
+	receiptHandler.RegisterRoutes(appServer.GetRouter(), authMiddleware)
+	authHandler.RegisterRoutes(appServer.GetRouter(), authMiddleware)
 
 	// Start server in a goroutine so we can handle shutdown gracefully
 	serverErr := make(chan error, 1)

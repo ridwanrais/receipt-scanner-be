@@ -40,6 +40,39 @@ definitions:
       qty:
         type: integer
     type: object
+  domain.User:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      emailVerified:
+        type: boolean
+      id:
+        type: string
+      isActive:
+        type: boolean
+      name:
+        type: string
+      pictureUrl:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  handler.MobileAuthRequest:
+    properties:
+      idToken:
+        type: string
+    required:
+    - idToken
+    type: object
+  handler.RefreshTokenRequest:
+    properties:
+      refreshToken:
+        type: string
+    required:
+    - refreshToken
+    type: object
   model.CategorySummary:
     properties:
       amount:
@@ -151,6 +184,28 @@ definitions:
       pagination:
         $ref: '#/definitions/model.PaginationResponse'
     type: object
+  service.AuthResponse:
+    properties:
+      accessToken:
+        type: string
+      expiresIn:
+        description: seconds
+        type: integer
+      refreshToken:
+        type: string
+      user:
+        $ref: '#/definitions/domain.User'
+    type: object
+  service.TokenPair:
+    properties:
+      accessToken:
+        type: string
+      expiresIn:
+        description: seconds
+        type: integer
+      refreshToken:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -164,6 +219,155 @@ info:
   title: Receipt Scanner API
   version: "1.0"
 paths:
+  /v1/auth/google/callback:
+    get:
+      consumes:
+      - application/json
+      description: Processes Google OAuth callback and returns JWT tokens
+      parameters:
+      - description: OAuth authorization code
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: OAuth state parameter
+        in: query
+        name: state
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Authentication successful
+          schema:
+            $ref: '#/definitions/service.AuthResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Handle Google OAuth callback
+      tags:
+      - auth
+  /v1/auth/google/login:
+    get:
+      consumes:
+      - application/json
+      description: Redirects to Google OAuth consent screen
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to Google OAuth
+      summary: Initiate Google OAuth login
+      tags:
+      - auth
+  /v1/auth/google/mobile:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate mobile app users using Google Sign-In ID Token
+      parameters:
+      - description: Google ID Token from mobile SDK
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.MobileAuthRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Authentication successful
+          schema:
+            $ref: '#/definitions/service.AuthResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "401":
+          description: Invalid ID token
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Authenticate with Google ID Token (Mobile)
+      tags:
+      - auth
+  /v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Logout the current user (client should remove tokens)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logout successful
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Logout
+      tags:
+      - auth
+  /v1/auth/me:
+    get:
+      consumes:
+      - application/json
+      description: Get the currently authenticated user's information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User information
+          schema:
+            $ref: '#/definitions/domain.User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - auth
+  /v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Generate a new access token using a refresh token
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: New tokens
+          schema:
+            $ref: '#/definitions/service.TokenPair'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "401":
+          description: Invalid refresh token
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - auth
   /v1/dashboard/summary:
     get:
       consumes:
@@ -405,7 +609,8 @@ schemes:
 - http
 - https
 securityDefinitions:
-  ApiKeyAuth:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
     in: header
     name: Authorization
     type: apiKey

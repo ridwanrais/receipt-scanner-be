@@ -69,6 +69,11 @@ func (s *Server) SetReceiptService(receiptService service.ReceiptService) {
 	s.receiptService = receiptService
 }
 
+// GetRouter returns the gin router instance
+func (s *Server) GetRouter() *gin.Engine {
+	return s.router
+}
+
 // setupRoutes configures all application routes
 func (s *Server) setupRoutes() {
 	// Health check endpoint
@@ -90,12 +95,11 @@ func (s *Server) setupRoutes() {
 
 // RegisterReceiptRoutes registers the receipt API routes
 // This must be called after SetReceiptHandler
+// Deprecated: Routes are now registered directly in main.go with auth middleware
 func (s *Server) RegisterReceiptRoutes() {
-	if s.receiptHandler == nil {
-		log.Println("Warning: Receipt handler is nil, skipping receipt routes registration")
-		return
-	}
-	s.receiptHandler.RegisterRoutes(s.router)
+	// This method is kept for backwards compatibility but is no longer used
+	// Routes are registered in main.go to allow auth middleware injection
+	log.Println("Note: RegisterReceiptRoutes is deprecated, routes should be registered in main.go")
 }
 
 // Start begins listening for requests and handles graceful shutdown

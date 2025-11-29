@@ -748,12 +748,12 @@ func formatMonthlyComparisonResponse(comparison *domain.MonthlyComparison) gin.H
 }
 
 // RegisterRoutes registers the API routes for the receipt handler
-func (h *ReceiptHandler) RegisterRoutes(router *gin.Engine) {
+func (h *ReceiptHandler) RegisterRoutes(router *gin.Engine, authMiddleware gin.HandlerFunc) {
 	// Create API group with base path
 	api := router.Group("/v1")
 
-	// Receipt endpoints
-	receipts := api.Group("/receipts")
+	// Receipt endpoints - all protected with auth
+	receipts := api.Group("/receipts", authMiddleware)
 	{
 		receipts.POST("/scan", h.ScanReceipt)
 		receipts.POST("", h.CreateReceipt)
@@ -764,15 +764,15 @@ func (h *ReceiptHandler) RegisterRoutes(router *gin.Engine) {
 		receipts.GET("/:receiptId/items", h.GetReceiptItems)
 	}
 
-	// Dashboard endpoints
-	dashboard := api.Group("/dashboard")
+	// Dashboard endpoints - all protected with auth
+	dashboard := api.Group("/dashboard", authMiddleware)
 	{
 		dashboard.GET("/summary", h.GetDashboardSummary)
 		dashboard.GET("/spending-trends", h.GetSpendingTrends)
 	}
 
-	// Insights endpoints
-	insights := api.Group("/insights")
+	// Insights endpoints - all protected with auth
+	insights := api.Group("/insights", authMiddleware)
 	{
 		insights.GET("/spending-by-category", h.GetSpendingByCategory)
 		insights.GET("/merchant-frequency", h.GetMerchantFrequency)

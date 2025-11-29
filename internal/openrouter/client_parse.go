@@ -76,14 +76,14 @@ func (c *Client) parseOpenRouterResponse(respBody []byte) (*domain.Invoice, erro
 		if invoiceDTO.InvoiceDate != "" {
 			invoiceDate, err := time.Parse("2006-01-02", invoiceDTO.InvoiceDate)
 			if err == nil {
-				invoice.InvoiceDate = invoiceDate
+				invoice.InvoiceDate = domain.DateOnly{Time: invoiceDate}
 			}
 		}
 
 		if invoiceDTO.DueDate != "" {
 			dueDate, err := time.Parse("2006-01-02", invoiceDTO.DueDate)
 			if err == nil {
-				invoice.DueDate = dueDate
+				invoice.DueDate = domain.DateOnly{Time: dueDate}
 			}
 		}
 
@@ -154,14 +154,14 @@ func (c *Client) extractJSONWithRegex(content string) (*domain.Invoice, error) {
 			if invoiceDTO.InvoiceDate != "" {
 				invoiceDate, err := time.Parse("2006-01-02", invoiceDTO.InvoiceDate)
 				if err == nil {
-					invoice.InvoiceDate = invoiceDate
+					invoice.InvoiceDate = domain.DateOnly{Time: invoiceDate}
 				}
 			}
 
 			if invoiceDTO.DueDate != "" {
 				dueDate, err := time.Parse("2006-01-02", invoiceDTO.DueDate)
 				if err == nil {
-					invoice.DueDate = dueDate
+					invoice.DueDate = domain.DateOnly{Time: dueDate}
 				}
 			}
 
@@ -206,7 +206,7 @@ func (c *Client) extractJSONWithRegex(content string) (*domain.Invoice, error) {
 	invoiceDateRegex := regexp.MustCompile(`"invoice_date"\s*:\s*"([^"]+)"`)
 	if matches := invoiceDateRegex.FindStringSubmatch(content); len(matches) > 1 {
 		if date, err := time.Parse("2006-01-02", matches[1]); err == nil {
-			invoice.InvoiceDate = date
+			invoice.InvoiceDate = domain.DateOnly{Time: date}
 		}
 	}
 
@@ -214,7 +214,7 @@ func (c *Client) extractJSONWithRegex(content string) (*domain.Invoice, error) {
 	dueDateRegex := regexp.MustCompile(`"due_date"\s*:\s*"([^"]+)"`)
 	if matches := dueDateRegex.FindStringSubmatch(content); len(matches) > 1 {
 		if date, err := time.Parse("2006-01-02", matches[1]); err == nil {
-			invoice.DueDate = date
+			invoice.DueDate = domain.DateOnly{Time: date}
 		}
 	}
 

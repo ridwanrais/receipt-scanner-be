@@ -41,6 +41,17 @@ type Config struct {
 	// Logging configuration
 	LogFormat string // "json" or "pretty"
 	LogLevel  string // "debug", "info", "warn", "error"
+
+	// Authentication configuration
+	GoogleClientIDWeb     string // Web OAuth client (for future web support)
+	GoogleClientSecretWeb string // Web OAuth client secret
+	GoogleRedirectURLWeb  string // Web OAuth redirect URL
+	GoogleClientIDAndroid string // Android OAuth client ID
+	GoogleClientIDIOS     string // iOS OAuth client ID
+	JWTSecret             string
+	JWTAccessExpiration   time.Duration
+	JWTRefreshExpiration  time.Duration
+	FrontendURL           string
 }
 
 // LoadConfig loads configuration from environment variables
@@ -76,6 +87,16 @@ func LoadConfig() (*Config, error) {
 
 		LogFormat: getEnvString("LOG_FORMAT", "json"),
 		LogLevel:  getEnvString("LOG_LEVEL", "info"),
+
+		GoogleClientIDWeb:     os.Getenv("GOOGLE_CLIENT_ID_WEB"),
+		GoogleClientSecretWeb: os.Getenv("GOOGLE_CLIENT_SECRET_WEB"),
+		GoogleRedirectURLWeb:  getEnvString("GOOGLE_REDIRECT_URL_WEB", "http://localhost:8080/v1/auth/google/callback"),
+		GoogleClientIDAndroid: os.Getenv("GOOGLE_CLIENT_ID_ANDROID"),
+		GoogleClientIDIOS:     os.Getenv("GOOGLE_CLIENT_ID_IOS"),
+		JWTSecret:             getEnvString("JWT_SECRET", "your-secret-key-change-in-production"),
+		JWTAccessExpiration:   time.Duration(getEnvInt("JWT_ACCESS_EXPIRATION_HOURS", 24)) * time.Hour,
+		JWTRefreshExpiration:  time.Duration(getEnvInt("JWT_REFRESH_EXPIRATION_DAYS", 30)) * 24 * time.Hour,
+		FrontendURL:           getEnvString("FRONTEND_URL", "http://localhost:3000"),
 	}
 
 	return config, nil

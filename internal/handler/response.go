@@ -13,6 +13,7 @@ const (
 	StatusCreated             = http.StatusCreated
 	StatusNoContent           = http.StatusNoContent
 	StatusBadRequest          = http.StatusBadRequest
+	StatusUnauthorized        = http.StatusUnauthorized
 	StatusNotFound            = http.StatusNotFound
 	StatusUnprocessableEntity = http.StatusUnprocessableEntity
 	StatusInternalServerError = http.StatusInternalServerError
@@ -43,6 +44,11 @@ func respondWithError(c *gin.Context, statusCode int, message string, details ..
 // respondBadRequest sends a 400 Bad Request response
 func respondBadRequest(c *gin.Context, message string, details ...model.ErrorDetail) {
 	respondWithError(c, StatusBadRequest, message, details...)
+}
+
+// respondUnauthorized sends a 401 Unauthorized response
+func respondUnauthorized(c *gin.Context, message string, details ...model.ErrorDetail) {
+	respondWithError(c, StatusUnauthorized, message, details...)
 }
 
 // respondNotFound sends a 404 Not Found response

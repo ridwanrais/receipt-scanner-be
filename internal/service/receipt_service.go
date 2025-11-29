@@ -125,7 +125,7 @@ func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte) 
 	// Convert domain.Invoice to domain.Receipt
 	receipt := &domain.Receipt{
 		Merchant:  invoiceData.VendorName,
-		Date:      invoiceData.InvoiceDate,
+		Date:      invoiceData.InvoiceDate.Time,
 		Total:     invoiceData.TotalDue,
 		Tax:       invoiceData.TaxAmount,
 		Subtotal:  invoiceData.Subtotal,

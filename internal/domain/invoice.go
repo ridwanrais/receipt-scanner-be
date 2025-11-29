@@ -1,30 +1,68 @@
 package domain
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
+
+// DateOnly is a custom type for handling date-only strings from JSON
+type DateOnly struct {
+	time.Time
+}
+
+// UnmarshalJSON implements custom unmarshaling for date-only strings
+func (d *DateOnly) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	// Handle null/empty dates
+	if s == "" || s == "null" {
+		d.Time = time.Time{}
+		return nil
+	}
+
+	// Parse date-only format
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return err
+	}
+	d.Time = t
+	return nil
+}
+
+// MarshalJSON implements custom marshaling for date-only strings
+func (d DateOnly) MarshalJSON() ([]byte, error) {
+	if d.Time.IsZero() {
+		return []byte("null"), nil
+	}
+	return json.Marshal(d.Time.Format("2006-01-02"))
+}
 
 // LineItem represents a single item in an invoice
 type LineItem struct {
-	Description string
-	Details     []string
-	Quantity    float64
-	UnitPrice   float64
-	Total       float64
-	Currency    string // Currency code (e.g., "IDR", "USD")
-	Category    string // Added for LLM and Go mapping
+	Description string   `json:"description"`
+	Details     []string `json:"details,omitempty"`
+	Quantity    float64  `json:"quantity"`
+	UnitPrice   float64  `json:"unit_price"`
+	Total       float64  `json:"total"`
+	Currency    string   `json:"currency"` // Currency code (e.g., "IDR", "USD")
+	Category    string   `json:"category"` // Added for LLM and Go mapping
 }
 
 // Invoice represents the core domain entity for an invoice
 type Invoice struct {
-	VendorName     string
-	InvoiceNumber  string
-	InvoiceDate    time.Time
-	DueDate        time.Time
-	Items          []LineItem
-	Subtotal       float64
-	TaxRatePercent float64
-	TaxAmount      float64
-	Discount       float64
-	TotalDue       float64
+	VendorName     string     `json:"vendor_name"`
+	InvoiceNumber  string     `json:"invoice_number"`
+	InvoiceDate    DateOnly   `json:"invoice_date"`
+	DueDate        DateOnly   `json:"due_date"`
+	Items          []LineItem `json:"items"`
+	Subtotal       float64    `json:"subtotal"`
+	TaxRatePercent float64    `json:"tax_rate_percent"`
+	TaxAmount      float64    `json:"tax_amount"`
+	Discount       float64    `json:"discount"`
+	TotalDue       float64    `json:"total_due"`
 }
 
 // NewInvoice creates a new invoice with default values
