@@ -30,6 +30,7 @@ func (e *ReceiptServiceError) Error() string {
 type ReceiptService interface {
 	// CRUD operations
 	ScanReceipt(ctx context.Context, imageData []byte, userID string) (*domain.Receipt, error)
+	RetryScanReceipt(ctx context.Context, receiptID string, userID string) (*domain.Receipt, error)
 	CreateReceipt(ctx context.Context, receipt *domain.Receipt) (*domain.Receipt, error)
 	GetReceiptByID(ctx context.Context, receiptID string) (*domain.Receipt, error)
 	UpdateReceipt(ctx context.Context, receipt *domain.Receipt) (*domain.Receipt, error)
@@ -90,6 +91,7 @@ func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte, 
 	// Extract invoice data using MLX or OpenRouter
 	var invoiceData *domain.Invoice
 	var err error
+	var receiptURL string
 
 	if s.useMLXService && s.mlxClient != nil && s.s3Uploader != nil {
 		// Upload image to S3 first
@@ -103,6 +105,9 @@ func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte, 
 			}
 		}
 
+		// Store the S3 URL as receipt URL for retry scanning
+		receiptURL = imageURL
+
 		// Use MLX service with the S3 URL
 		invoiceData, err = s.mlxClient.ExtractInvoiceData(imageURL)
 		if err != nil {
@@ -112,6 +117,16 @@ func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte, 
 			}
 		}
 	} else {
+		// Upload image to S3 for receipt URL storage
+		if s.s3Uploader != nil {
+			timestamp := time.Now().UnixNano()
+			filename := fmt.Sprintf("invoice_%d.png", timestamp)
+			imageURL, uploadErr := s.s3Uploader.UploadImage(imageData, filename)
+			if uploadErr == nil {
+				receiptURL = imageURL
+			}
+		}
+
 		// Use OpenRouter to extract invoice data
 		invoiceData, err = s.openAIClient.ExtractInvoiceData(imageData)
 		if err != nil {
@@ -124,15 +139,16 @@ func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte, 
 
 	// Convert domain.Invoice to domain.Receipt
 	receipt := &domain.Receipt{
-		UserID:    userID,
-		Merchant:  invoiceData.VendorName,
-		Date:      invoiceData.InvoiceDate.Time,
-		Total:     invoiceData.TotalDue,
-		Tax:       invoiceData.TaxAmount,
-		Subtotal:  invoiceData.Subtotal,
-		Items:     make([]domain.ReceiptItem, 0, len(invoiceData.Items)),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		UserID:     userID,
+		Merchant:   invoiceData.VendorName,
+		Date:       domain.FlexibleDate{Time: invoiceData.InvoiceDate.Time},
+		Total:      invoiceData.TotalDue,
+		Tax:        invoiceData.TaxAmount,
+		Subtotal:   invoiceData.Subtotal,
+		ReceiptURL: receiptURL,
+		Items:      make([]domain.ReceiptItem, 0, len(invoiceData.Items)),
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 
 	// Convert invoice items to receipt items
@@ -141,11 +157,16 @@ func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte, 
 		if item.Category != "" {
 			category = item.Category // prefer LLM if present
 		}
+		// Default to USD if currency is not provided
+		currency := item.Currency
+		if currency == "" {
+			currency = "USD"
+		}
 		receiptItem := domain.ReceiptItem{
 			Name:     item.Description,
 			Quantity: int(item.Quantity), // Convert float64 to int
 			Price:    item.UnitPrice,
-			Currency: item.Currency,
+			Currency: currency,
 			Category: category,
 		}
 		receipt.Items = append(receipt.Items, receiptItem)
@@ -161,6 +182,110 @@ func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte, 
 	}
 
 	return storedReceipt, nil
+}
+
+// RetryScanReceipt re-processes an existing receipt using its stored receipt URL
+func (s *ReceiptServiceImpl) RetryScanReceipt(ctx context.Context, receiptID string, userID string) (*domain.Receipt, error) {
+	// Get the existing receipt
+	existingReceipt, err := s.repository.GetReceiptByID(ctx, receiptID)
+	if err != nil {
+		return nil, &ReceiptServiceError{
+			Op:  "get_receipt_for_retry",
+			Err: err,
+		}
+	}
+
+	// Verify ownership
+	if existingReceipt.UserID != userID {
+		return nil, &ReceiptServiceError{
+			Op:  "verify_receipt_ownership",
+			Err: fmt.Errorf("receipt does not belong to user"),
+		}
+	}
+
+	// Check if receipt URL exists
+	if existingReceipt.ReceiptURL == "" {
+		return nil, &ReceiptServiceError{
+			Op:  "check_receipt_url",
+			Err: fmt.Errorf("receipt URL not found, cannot retry scan"),
+		}
+	}
+
+	// Acquire worker from pool
+	select {
+	case s.workerPool <- struct{}{}:
+		// Worker acquired, continue processing
+		defer func() {
+			// Release worker back to pool
+			<-s.workerPool
+		}()
+	case <-ctx.Done():
+		// Context cancelled while waiting for worker
+		return nil, &ReceiptServiceError{
+			Op:  "acquire_worker",
+			Err: ctx.Err(),
+		}
+	}
+
+	// Extract invoice data using the stored receipt URL
+	var invoiceData *domain.Invoice
+	if s.useMLXService && s.mlxClient != nil {
+		// Use MLX service with the stored URL
+		invoiceData, err = s.mlxClient.ExtractInvoiceData(existingReceipt.ReceiptURL)
+		if err != nil {
+			return nil, &ReceiptServiceError{
+				Op:  "extract_receipt_data_mlx_retry",
+				Err: err,
+			}
+		}
+	} else {
+		// For OpenRouter, we need to download the image first
+		return nil, &ReceiptServiceError{
+			Op:  "retry_scan_not_supported",
+			Err: fmt.Errorf("retry scan is only supported with MLX service"),
+		}
+	}
+
+	// Update the existing receipt with new extracted data
+	existingReceipt.Merchant = invoiceData.VendorName
+	existingReceipt.Date = domain.FlexibleDate{Time: invoiceData.InvoiceDate.Time}
+	existingReceipt.Total = invoiceData.TotalDue
+	existingReceipt.Tax = invoiceData.TaxAmount
+	existingReceipt.Subtotal = invoiceData.Subtotal
+	existingReceipt.UpdatedAt = time.Now()
+
+	// Convert invoice items to receipt items
+	existingReceipt.Items = make([]domain.ReceiptItem, 0, len(invoiceData.Items))
+	for _, item := range invoiceData.Items {
+		category := inferCategory(item.Description)
+		if item.Category != "" {
+			category = item.Category
+		}
+		// Default to USD if currency is not provided
+		currency := item.Currency
+		if currency == "" {
+			currency = "USD"
+		}
+		receiptItem := domain.ReceiptItem{
+			Name:     item.Description,
+			Quantity: int(item.Quantity),
+			Price:    item.UnitPrice,
+			Currency: currency,
+			Category: category,
+		}
+		existingReceipt.Items = append(existingReceipt.Items, receiptItem)
+	}
+
+	// Update receipt in database
+	updatedReceipt, err := s.repository.UpdateReceipt(ctx, existingReceipt)
+	if err != nil {
+		return nil, &ReceiptServiceError{
+			Op:  "update_receipt_after_retry",
+			Err: err,
+		}
+	}
+
+	return updatedReceipt, nil
 }
 
 // inferCategory maps item descriptions to categories using keywords

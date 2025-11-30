@@ -1,11 +1,16 @@
 basePath: /
 definitions:
+  domain.FlexibleDate:
+    properties:
+      time.Time:
+        type: string
+    type: object
   domain.Receipt:
     properties:
       created_at:
         type: string
       date:
-        type: string
+        $ref: '#/definitions/domain.FlexibleDate'
       id:
         type: string
       image_url:
@@ -15,6 +20,8 @@ definitions:
           $ref: '#/definitions/domain.ReceiptItem'
         type: array
       merchant:
+        type: string
+      receipt_url:
         type: string
       subtotal:
         type: number
@@ -572,6 +579,39 @@ paths:
           schema:
             $ref: '#/definitions/model.ErrorResponse'
       summary: Update a receipt
+      tags:
+      - receipts
+  /v1/receipts/{receiptId}/retry-scan:
+    post:
+      consumes:
+      - application/json
+      description: Re-process an existing receipt using its stored receipt URL
+      parameters:
+      - description: Receipt ID
+        in: path
+        name: receiptId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully rescanned receipt
+          schema:
+            $ref: '#/definitions/model.ReceiptResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Receipt not found
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Retry scanning a receipt
       tags:
       - receipts
   /v1/receipts/scan:

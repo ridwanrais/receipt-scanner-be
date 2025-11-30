@@ -88,6 +88,60 @@ func (h *ReceiptHandler) ScanReceipt(c *gin.Context) {
 	respondOK(c, formatReceiptResponse(receipt))
 }
 
+// RetryScanReceipt handles the POST /receipts/{receiptId}/retry-scan endpoint
+// @Summary Retry scanning a receipt
+// @Description Re-process an existing receipt using its stored receipt URL
+// @Tags receipts
+// @Accept json
+// @Produce json
+// @Param receiptId path string true "Receipt ID"
+// @Success 200 {object} model.ReceiptResponse "Successfully rescanned receipt"
+// @Failure 400 {object} model.ErrorResponse "Bad request"
+// @Failure 404 {object} model.ErrorResponse "Receipt not found"
+// @Failure 500 {object} model.ErrorResponse "Internal server error"
+// @Router /v1/receipts/{receiptId}/retry-scan [post]
+func (h *ReceiptHandler) RetryScanReceipt(c *gin.Context) {
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		respondUnauthorized(c, "User not authenticated")
+		return
+	}
+
+	receiptID, err := getPathParam(c, "receiptId")
+	if err != nil {
+		respondBadRequest(c, err.Error())
+		return
+	}
+
+	// Retry scanning the receipt
+	receipt, err := h.receiptService.RetryScanReceipt(c.Request.Context(), receiptID, userID.(string))
+	if err != nil {
+		// Log the actual error with context
+		logError(c, "failed_to_retry_scan_receipt", err, map[string]interface{}{
+			"error_type":    "service_error",
+			"error_message": err.Error(),
+			"receipt_id":    receiptID,
+		})
+
+		// Check for specific error types
+		if strings.Contains(fmt.Sprintf("%v", err), "not found") {
+			respondNotFound(c, fmt.Sprintf("Receipt not found: %s", receiptID))
+		} else if strings.Contains(fmt.Sprintf("%v", err), "does not belong") {
+			respondUnauthorized(c, "You don't have permission to retry this receipt")
+		} else if strings.Contains(fmt.Sprintf("%v", err), "URL not found") {
+			respondBadRequest(c, "Receipt URL not found, cannot retry scan")
+		} else if strings.Contains(fmt.Sprintf("%v", err), "not supported") {
+			respondBadRequest(c, "Retry scan is only supported with MLX service")
+		} else {
+			respondInternalServerError(c, "Failed to retry scan receipt")
+		}
+		return
+	}
+
+	respondOK(c, formatReceiptResponse(receipt))
+}
+
 // CreateReceipt handles the POST /receipts endpoint
 // @Summary Create a new receipt
 // @Description Create a new receipt with manual data entry
@@ -533,6 +587,12 @@ func validateReceiptInput(receipt *domain.Receipt) []model.ErrorDetail {
 					"Item price cannot be negative",
 				))
 			}
+			if item.Currency == "" {
+				errors = append(errors, newErrorDetail(
+					fmt.Sprintf("items[%d].currency", i),
+					"Item currency is required",
+				))
+			}
 		}
 	}
 
@@ -778,6 +838,7 @@ func (h *ReceiptHandler) RegisterRoutes(router *gin.Engine, authMiddleware gin.H
 		receipts.GET("/:receiptId", h.GetReceiptByID)
 		receipts.PUT("/:receiptId", h.UpdateReceipt)
 		receipts.DELETE("/:receiptId", h.DeleteReceipt)
+		receipts.POST("/:receiptId/retry-scan", h.RetryScanReceipt)
 		receipts.GET("/:receiptId/items", h.GetReceiptItems)
 	}
 

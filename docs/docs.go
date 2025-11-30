@@ -609,9 +609,67 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/v1/receipts/{receiptId}/retry-scan": {
+            "post": {
+                "description": "Re-process an existing receipt using its stored receipt URL",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "receipts"
+                ],
+                "summary": "Retry scanning a receipt",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Receipt ID",
+                        "name": "receiptId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully rescanned receipt",
+                        "schema": {
+                            "$ref": "#/definitions/model.ReceiptResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Receipt not found",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "domain.FlexibleDate": {
+            "type": "object",
+            "properties": {
+                "time.Time": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.Receipt": {
             "type": "object",
             "properties": {
@@ -619,7 +677,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "date": {
-                    "type": "string"
+                    "$ref": "#/definitions/domain.FlexibleDate"
                 },
                 "id": {
                     "type": "string"
@@ -634,6 +692,9 @@ const docTemplate = `{
                     }
                 },
                 "merchant": {
+                    "type": "string"
+                },
+                "receipt_url": {
                     "type": "string"
                 },
                 "subtotal": {

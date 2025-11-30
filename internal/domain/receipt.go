@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"encoding/json"
+	"strings"
 	"time"
 )
 
@@ -16,17 +18,58 @@ type ReceiptItem struct {
 
 // Receipt represents a scanned or manually entered receipt
 type Receipt struct {
-	ID        string        `json:"id"`
-	UserID    string        `json:"user_id"`
-	Merchant  string        `json:"merchant"`
-	Date      time.Time     `json:"date"`
-	Total     float64       `json:"total"`
-	Tax       float64       `json:"tax,omitempty"`
-	Subtotal  float64       `json:"subtotal,omitempty"`
-	Items     []ReceiptItem `json:"items"`
-	ImageURL  string        `json:"image_url,omitempty"`
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
+	ID         string        `json:"id"`
+	UserID     string        `json:"user_id"`
+	Merchant   string        `json:"merchant"`
+	Date       FlexibleDate  `json:"date"`
+	Total      float64       `json:"total"`
+	Tax        float64       `json:"tax,omitempty"`
+	Subtotal   float64       `json:"subtotal,omitempty"`
+	Items      []ReceiptItem `json:"items"`
+	ImageURL   string        `json:"image_url,omitempty"`
+	ReceiptURL string        `json:"receipt_url,omitempty"`
+	CreatedAt  time.Time     `json:"created_at"`
+	UpdatedAt  time.Time     `json:"updated_at"`
+}
+
+// FlexibleDate is a custom type that can unmarshal multiple date formats
+type FlexibleDate struct {
+	time.Time
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for FlexibleDate
+func (fd *FlexibleDate) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), "\"")
+	if s == "null" || s == "" {
+		fd.Time = time.Time{}
+		return nil
+	}
+
+	// Try multiple date formats
+	formats := []string{
+		"2006-01-02",          // YYYY-MM-DD
+		time.RFC3339,          // 2006-01-02T15:04:05Z07:00
+		"2006-01-02T15:04:05", // Without timezone
+		time.RFC3339Nano,      // With nanoseconds
+	}
+
+	var err error
+	for _, format := range formats {
+		fd.Time, err = time.Parse(format, s)
+		if err == nil {
+			return nil
+		}
+	}
+
+	return err
+}
+
+// MarshalJSON implements custom JSON marshaling for FlexibleDate
+func (fd FlexibleDate) MarshalJSON() ([]byte, error) {
+	if fd.Time.IsZero() {
+		return []byte("null"), nil
+	}
+	return json.Marshal(fd.Time.Format(time.RFC3339))
 }
 
 // ReceiptFilter represents filters for querying receipts

@@ -35,10 +35,10 @@ func (r *PostgresReceiptRepository) CreateReceipt(ctx context.Context, receipt *
 	// Insert receipt
 	var receiptID string
 	err = tx.QueryRow(ctx, `
-		INSERT INTO receipts (user_id, merchant, date, total, tax, subtotal, image_url)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO receipts (user_id, merchant, date, total, tax, subtotal, image_url, receipt_url)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, created_at, updated_at
-	`, receipt.UserID, receipt.Merchant, receipt.Date, receipt.Total, receipt.Tax, receipt.Subtotal, receipt.ImageURL).Scan(
+	`, receipt.UserID, receipt.Merchant, receipt.Date.Time, receipt.Total, receipt.Tax, receipt.Subtotal, receipt.ImageURL, receipt.ReceiptURL).Scan(
 		&receiptID, &receipt.CreatedAt, &receipt.UpdatedAt,
 	)
 	if err != nil {
@@ -75,12 +75,12 @@ func (r *PostgresReceiptRepository) GetReceiptByID(ctx context.Context, receiptI
 	// Query receipt
 	var receipt domain.Receipt
 	err := r.db.QueryRow(ctx, `
-		SELECT id, user_id, merchant, date, total, tax, subtotal, image_url, created_at, updated_at
+		SELECT id, user_id, merchant, date, total, tax, subtotal, image_url, receipt_url, created_at, updated_at
 		FROM receipts
 		WHERE id = $1
 	`, receiptID).Scan(
-		&receipt.ID, &receipt.UserID, &receipt.Merchant, &receipt.Date, &receipt.Total, &receipt.Tax,
-		&receipt.Subtotal, &receipt.ImageURL, &receipt.CreatedAt, &receipt.UpdatedAt,
+		&receipt.ID, &receipt.UserID, &receipt.Merchant, &receipt.Date.Time, &receipt.Total, &receipt.Tax,
+		&receipt.Subtotal, &receipt.ImageURL, &receipt.ReceiptURL, &receipt.CreatedAt, &receipt.UpdatedAt,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -130,10 +130,10 @@ func (r *PostgresReceiptRepository) UpdateReceipt(ctx context.Context, receipt *
 	var updatedAt time.Time
 	err = tx.QueryRow(ctx, `
 		UPDATE receipts
-		SET merchant = $1, date = $2, total = $3, tax = $4, subtotal = $5, image_url = $6
-		WHERE id = $7
+		SET merchant = $1, date = $2, total = $3, tax = $4, subtotal = $5, image_url = $6, receipt_url = $7
+		WHERE id = $8
 		RETURNING updated_at
-	`, receipt.Merchant, receipt.Date, receipt.Total, receipt.Tax, receipt.Subtotal, receipt.ImageURL, receipt.ID).Scan(&updatedAt)
+	`, receipt.Merchant, receipt.Date.Time, receipt.Total, receipt.Tax, receipt.Subtotal, receipt.ImageURL, receipt.ReceiptURL, receipt.ID).Scan(&updatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update receipt: %w", err)
 	}
@@ -251,7 +251,7 @@ func (r *PostgresReceiptRepository) ListReceipts(ctx context.Context, filter dom
 
 	// Query receipts with pagination
 	query := fmt.Sprintf(`
-		SELECT id, user_id, merchant, date, total, tax, subtotal, image_url, created_at, updated_at
+		SELECT id, user_id, merchant, date, total, tax, subtotal, image_url, receipt_url, created_at, updated_at
 		FROM receipts
 		%s
 		ORDER BY date DESC
@@ -271,8 +271,8 @@ func (r *PostgresReceiptRepository) ListReceipts(ctx context.Context, filter dom
 	for rows.Next() {
 		var receipt domain.Receipt
 		if err := rows.Scan(
-			&receipt.ID, &receipt.UserID, &receipt.Merchant, &receipt.Date, &receipt.Total, &receipt.Tax,
-			&receipt.Subtotal, &receipt.ImageURL, &receipt.CreatedAt, &receipt.UpdatedAt,
+			&receipt.ID, &receipt.UserID, &receipt.Merchant, &receipt.Date.Time, &receipt.Total, &receipt.Tax,
+			&receipt.Subtotal, &receipt.ImageURL, &receipt.ReceiptURL, &receipt.CreatedAt, &receipt.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan receipt: %w", err)
 		}
