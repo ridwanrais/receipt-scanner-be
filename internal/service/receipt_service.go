@@ -311,6 +311,14 @@ func inferCategory(description string) string {
 
 // CreateReceipt saves a new receipt
 func (s *ReceiptServiceImpl) CreateReceipt(ctx context.Context, receipt *domain.Receipt) (*domain.Receipt, error) {
+	// Recalculate subtotal and total from items
+	subtotal := 0.0
+	for _, item := range receipt.Items {
+		subtotal += item.Price * float64(item.Quantity)
+	}
+	receipt.Subtotal = subtotal
+	receipt.Total = subtotal + receipt.Tax
+
 	// Set timestamps
 	now := time.Now()
 	receipt.CreatedAt = now
@@ -342,6 +350,14 @@ func (s *ReceiptServiceImpl) GetReceiptByID(ctx context.Context, receiptID strin
 
 // UpdateReceipt updates an existing receipt
 func (s *ReceiptServiceImpl) UpdateReceipt(ctx context.Context, receipt *domain.Receipt) (*domain.Receipt, error) {
+	// Recalculate subtotal and total from items
+	subtotal := 0.0
+	for _, item := range receipt.Items {
+		subtotal += item.Price * float64(item.Quantity)
+	}
+	receipt.Subtotal = subtotal
+	receipt.Total = subtotal + receipt.Tax
+
 	// Update timestamp
 	receipt.UpdatedAt = time.Now()
 
