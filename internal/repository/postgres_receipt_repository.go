@@ -205,6 +205,13 @@ func (r *PostgresReceiptRepository) ListReceipts(ctx context.Context, filter dom
 	args := []interface{}{}
 	argCount := 1
 
+	// Always filter by user ID for security
+	if filter.UserID != "" {
+		conditions = append(conditions, fmt.Sprintf("user_id = $%d", argCount))
+		args = append(args, filter.UserID)
+		argCount++
+	}
+
 	if filter.StartDate != nil {
 		conditions = append(conditions, fmt.Sprintf("date >= $%d", argCount))
 		args = append(args, filter.StartDate)

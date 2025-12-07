@@ -41,11 +41,11 @@ type ReceiptService interface {
 	GetReceiptItems(ctx context.Context, receiptID string) ([]domain.ReceiptItem, error)
 
 	// Dashboard and insights operations
-	GetDashboardSummary(ctx context.Context, startDate, endDate *string) (*domain.DashboardSummary, error)
-	GetSpendingTrends(ctx context.Context, period string, startDate, endDate *string) (*domain.SpendingTrends, error)
-	GetSpendingByCategory(ctx context.Context, startDate, endDate *string) (*domain.CategorySpending, error)
-	GetMerchantFrequency(ctx context.Context, startDate, endDate *string, limit int) (*domain.MerchantFrequency, error)
-	GetMonthlyComparison(ctx context.Context, month1, month2 string) (*domain.MonthlyComparison, error)
+	GetDashboardSummary(ctx context.Context, userID string, startDate, endDate *string) (*domain.DashboardSummary, error)
+	GetSpendingTrends(ctx context.Context, userID string, period string, startDate, endDate *string) (*domain.SpendingTrends, error)
+	GetSpendingByCategory(ctx context.Context, userID string, startDate, endDate *string) (*domain.CategorySpending, error)
+	GetMerchantFrequency(ctx context.Context, userID string, startDate, endDate *string, limit int) (*domain.MerchantFrequency, error)
+	GetMonthlyComparison(ctx context.Context, userID string, month1, month2 string) (*domain.MonthlyComparison, error)
 }
 
 // ReceiptServiceImpl implements the ReceiptService interface
@@ -410,8 +410,8 @@ func (s *ReceiptServiceImpl) GetReceiptItems(ctx context.Context, receiptID stri
 }
 
 // GetDashboardSummary retrieves summary data for the dashboard
-func (s *ReceiptServiceImpl) GetDashboardSummary(ctx context.Context, startDate, endDate *string) (*domain.DashboardSummary, error) {
-	summary, err := s.repository.GetDashboardSummary(ctx, startDate, endDate)
+func (s *ReceiptServiceImpl) GetDashboardSummary(ctx context.Context, userID string, startDate, endDate *string) (*domain.DashboardSummary, error) {
+	summary, err := s.repository.GetDashboardSummary(ctx, userID, startDate, endDate)
 	if err != nil {
 		return nil, &ReceiptServiceError{
 			Op:  "get_dashboard_summary",
@@ -422,8 +422,8 @@ func (s *ReceiptServiceImpl) GetDashboardSummary(ctx context.Context, startDate,
 }
 
 // GetSpendingTrends retrieves spending trends over time
-func (s *ReceiptServiceImpl) GetSpendingTrends(ctx context.Context, period string, startDate, endDate *string) (*domain.SpendingTrends, error) {
-	trends, err := s.repository.GetSpendingTrends(ctx, period, startDate, endDate)
+func (s *ReceiptServiceImpl) GetSpendingTrends(ctx context.Context, userID string, period string, startDate, endDate *string) (*domain.SpendingTrends, error) {
+	trends, err := s.repository.GetSpendingTrends(ctx, userID, period, startDate, endDate)
 	if err != nil {
 		return nil, &ReceiptServiceError{
 			Op:  "get_spending_trends",
@@ -434,8 +434,8 @@ func (s *ReceiptServiceImpl) GetSpendingTrends(ctx context.Context, period strin
 }
 
 // GetSpendingByCategory retrieves spending breakdown by category
-func (s *ReceiptServiceImpl) GetSpendingByCategory(ctx context.Context, startDate, endDate *string) (*domain.CategorySpending, error) {
-	categorySpending, err := s.repository.GetSpendingByCategory(ctx, startDate, endDate)
+func (s *ReceiptServiceImpl) GetSpendingByCategory(ctx context.Context, userID string, startDate, endDate *string) (*domain.CategorySpending, error) {
+	categorySpending, err := s.repository.GetSpendingByCategory(ctx, userID, startDate, endDate)
 	if err != nil {
 		return nil, &ReceiptServiceError{
 			Op:  "get_spending_by_category",
@@ -446,8 +446,8 @@ func (s *ReceiptServiceImpl) GetSpendingByCategory(ctx context.Context, startDat
 }
 
 // GetMerchantFrequency retrieves data on frequently visited merchants
-func (s *ReceiptServiceImpl) GetMerchantFrequency(ctx context.Context, startDate, endDate *string, limit int) (*domain.MerchantFrequency, error) {
-	merchantFrequency, err := s.repository.GetMerchantFrequency(ctx, startDate, endDate, limit)
+func (s *ReceiptServiceImpl) GetMerchantFrequency(ctx context.Context, userID string, startDate, endDate *string, limit int) (*domain.MerchantFrequency, error) {
+	merchantFrequency, err := s.repository.GetMerchantFrequency(ctx, userID, startDate, endDate, limit)
 	if err != nil {
 		return nil, &ReceiptServiceError{
 			Op:  "get_merchant_frequency",
@@ -458,8 +458,8 @@ func (s *ReceiptServiceImpl) GetMerchantFrequency(ctx context.Context, startDate
 }
 
 // GetMonthlyComparison compares spending between two months
-func (s *ReceiptServiceImpl) GetMonthlyComparison(ctx context.Context, month1, month2 string) (*domain.MonthlyComparison, error) {
-	comparison, err := s.repository.GetMonthlyComparison(ctx, month1, month2)
+func (s *ReceiptServiceImpl) GetMonthlyComparison(ctx context.Context, userID string, month1, month2 string) (*domain.MonthlyComparison, error) {
+	comparison, err := s.repository.GetMonthlyComparison(ctx, userID, month1, month2)
 	if err != nil {
 		return nil, &ReceiptServiceError{
 			Op:  "get_monthly_comparison",

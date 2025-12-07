@@ -19,9 +19,9 @@ type ReceiptRepository interface {
 	GetReceiptItems(ctx context.Context, receiptID string) ([]domain.ReceiptItem, error)
 
 	// Dashboard and insights operations
-	GetDashboardSummary(ctx context.Context, startDate, endDate *string) (*domain.DashboardSummary, error)
-	GetSpendingTrends(ctx context.Context, period string, startDate, endDate *string) (*domain.SpendingTrends, error)
-	GetSpendingByCategory(ctx context.Context, startDate, endDate *string) (*domain.CategorySpending, error)
-	GetMerchantFrequency(ctx context.Context, startDate, endDate *string, limit int) (*domain.MerchantFrequency, error)
-	GetMonthlyComparison(ctx context.Context, month1, month2 string) (*domain.MonthlyComparison, error)
+	GetDashboardSummary(ctx context.Context, userID string, startDate, endDate *string) (*domain.DashboardSummary, error)
+	GetSpendingTrends(ctx context.Context, userID string, period string, startDate, endDate *string) (*domain.SpendingTrends, error)
+	GetSpendingByCategory(ctx context.Context, userID string, startDate, endDate *string) (*domain.CategorySpending, error)
+	GetMerchantFrequency(ctx context.Context, userID string, startDate, endDate *string, limit int) (*domain.MerchantFrequency, error)
+	GetMonthlyComparison(ctx context.Context, userID string, month1, month2 string) (*domain.MonthlyComparison, error)
 }

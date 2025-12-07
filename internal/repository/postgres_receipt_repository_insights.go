@@ -10,7 +10,7 @@ import (
 )
 
 // GetDashboardSummary retrieves summary data for the dashboard
-func (r *PostgresReceiptRepository) GetDashboardSummary(ctx context.Context, startDateStr, endDateStr *string) (*domain.DashboardSummary, error) {
+func (r *PostgresReceiptRepository) GetDashboardSummary(ctx context.Context, userID string, startDateStr, endDateStr *string) (*domain.DashboardSummary, error) {
 	// Parse date strings if provided
 	var startDate, endDate *time.Time
 
@@ -34,6 +34,13 @@ func (r *PostgresReceiptRepository) GetDashboardSummary(ctx context.Context, sta
 	conditions := []string{}
 	args := []interface{}{}
 	argCount := 1
+
+	// Always filter by user ID
+	if userID != "" {
+		conditions = append(conditions, fmt.Sprintf("r.user_id = $%d", argCount))
+		args = append(args, userID)
+		argCount++
+	}
 
 	if startDate != nil {
 		conditions = append(conditions, fmt.Sprintf("r.date >= $%d::date", argCount))
@@ -144,7 +151,7 @@ func (r *PostgresReceiptRepository) GetDashboardSummary(ctx context.Context, sta
 }
 
 // GetSpendingTrends retrieves spending trends over time
-func (r *PostgresReceiptRepository) GetSpendingTrends(ctx context.Context, period string, startDateStr, endDateStr *string) (*domain.SpendingTrends, error) {
+func (r *PostgresReceiptRepository) GetSpendingTrends(ctx context.Context, userID string, period string, startDateStr, endDateStr *string) (*domain.SpendingTrends, error) {
 	// Create the result object
 	trends := &domain.SpendingTrends{
 		Period: period,
@@ -162,14 +169,20 @@ func (r *PostgresReceiptRepository) GetSpendingTrends(ctx context.Context, perio
 		return nil, fmt.Errorf("invalid period: %s", period)
 	}
 
-	// Build WHERE clause with literal date strings
+	// Build WHERE clause with user ID and date strings
+	conditions := []string{}
+	if userID != "" {
+		conditions = append(conditions, fmt.Sprintf("user_id = '%s'", userID))
+	}
+	if startDateStr != nil {
+		conditions = append(conditions, fmt.Sprintf("date >= '%s'::date", *startDateStr))
+	}
+	if endDateStr != nil {
+		conditions = append(conditions, fmt.Sprintf("date <= '%s'::date", *endDateStr))
+	}
 	whereClause := ""
-	if startDateStr != nil && endDateStr != nil {
-		whereClause = fmt.Sprintf("WHERE date >= '%s'::date AND date <= '%s'::date", *startDateStr, *endDateStr)
-	} else if startDateStr != nil {
-		whereClause = fmt.Sprintf("WHERE date >= '%s'::date", *startDateStr)
-	} else if endDateStr != nil {
-		whereClause = fmt.Sprintf("WHERE date <= '%s'::date", *endDateStr)
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
 	}
 
 	// Use different queries based on period to avoid TO_CHAR conversion issues
@@ -241,31 +254,43 @@ func (r *PostgresReceiptRepository) GetSpendingTrends(ctx context.Context, perio
 }
 
 // GetSpendingByCategory retrieves spending breakdown by category
-func (r *PostgresReceiptRepository) GetSpendingByCategory(ctx context.Context, startDateStr, endDateStr *string) (*domain.CategorySpending, error) {
+func (r *PostgresReceiptRepository) GetSpendingByCategory(ctx context.Context, userID string, startDateStr, endDateStr *string) (*domain.CategorySpending, error) {
 	// Initialize result
 	result := &domain.CategorySpending{
 		Total:      0,
 		Categories: []domain.CategorySpendingItem{},
 	}
 
-	// Build WHERE clause with literal date strings
+	// Build WHERE clause with user ID and date strings
+	conditions := []string{}
+	if userID != "" {
+		conditions = append(conditions, fmt.Sprintf("user_id = '%s'", userID))
+	}
+	if startDateStr != nil {
+		conditions = append(conditions, fmt.Sprintf("date >= '%s'::date", *startDateStr))
+	}
+	if endDateStr != nil {
+		conditions = append(conditions, fmt.Sprintf("date <= '%s'::date", *endDateStr))
+	}
 	whereClause := ""
-	if startDateStr != nil && endDateStr != nil {
-		whereClause = fmt.Sprintf("WHERE date >= '%s'::date AND date <= '%s'::date", *startDateStr, *endDateStr)
-	} else if startDateStr != nil {
-		whereClause = fmt.Sprintf("WHERE date >= '%s'::date", *startDateStr)
-	} else if endDateStr != nil {
-		whereClause = fmt.Sprintf("WHERE date <= '%s'::date", *endDateStr)
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
 	}
 
 	// Build receipt WHERE clause for joining with receipt_items
+	receiptConditions := []string{}
+	if userID != "" {
+		receiptConditions = append(receiptConditions, fmt.Sprintf("r.user_id = '%s'", userID))
+	}
+	if startDateStr != nil {
+		receiptConditions = append(receiptConditions, fmt.Sprintf("r.date >= '%s'::date", *startDateStr))
+	}
+	if endDateStr != nil {
+		receiptConditions = append(receiptConditions, fmt.Sprintf("r.date <= '%s'::date", *endDateStr))
+	}
 	receiptWhereClause := ""
-	if startDateStr != nil && endDateStr != nil {
-		receiptWhereClause = fmt.Sprintf("WHERE r.date >= '%s'::date AND r.date <= '%s'::date", *startDateStr, *endDateStr)
-	} else if startDateStr != nil {
-		receiptWhereClause = fmt.Sprintf("WHERE r.date >= '%s'::date", *startDateStr)
-	} else if endDateStr != nil {
-		receiptWhereClause = fmt.Sprintf("WHERE r.date <= '%s'::date", *endDateStr)
+	if len(receiptConditions) > 0 {
+		receiptWhereClause = "WHERE " + strings.Join(receiptConditions, " AND ")
 	}
 
 	// Get total spending
@@ -386,7 +411,7 @@ func (r *PostgresReceiptRepository) GetSpendingByCategory(ctx context.Context, s
 }
 
 // GetMerchantFrequency retrieves data on frequently visited merchants
-func (r *PostgresReceiptRepository) GetMerchantFrequency(ctx context.Context, startDateStr, endDateStr *string, limit int) (*domain.MerchantFrequency, error) {
+func (r *PostgresReceiptRepository) GetMerchantFrequency(ctx context.Context, userID string, startDateStr, endDateStr *string, limit int) (*domain.MerchantFrequency, error) {
 	// Validate limit
 	if limit <= 0 {
 		limit = 10 // Default
@@ -401,14 +426,20 @@ func (r *PostgresReceiptRepository) GetMerchantFrequency(ctx context.Context, st
 		Merchants:   []domain.MerchantFrequencyDetail{},
 	}
 
-	// Build WHERE clause with literal date strings
+	// Build WHERE clause with user ID and date strings
+	conditions := []string{}
+	if userID != "" {
+		conditions = append(conditions, fmt.Sprintf("user_id = '%s'", userID))
+	}
+	if startDateStr != nil {
+		conditions = append(conditions, fmt.Sprintf("date >= '%s'::date", *startDateStr))
+	}
+	if endDateStr != nil {
+		conditions = append(conditions, fmt.Sprintf("date <= '%s'::date", *endDateStr))
+	}
 	whereClause := ""
-	if startDateStr != nil && endDateStr != nil {
-		whereClause = fmt.Sprintf("WHERE date >= '%s'::date AND date <= '%s'::date", *startDateStr, *endDateStr)
-	} else if startDateStr != nil {
-		whereClause = fmt.Sprintf("WHERE date >= '%s'::date", *startDateStr)
-	} else if endDateStr != nil {
-		whereClause = fmt.Sprintf("WHERE date <= '%s'::date", *endDateStr)
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
 	}
 
 	// Get total visit count
@@ -474,7 +505,7 @@ func (r *PostgresReceiptRepository) GetMerchantFrequency(ctx context.Context, st
 }
 
 // GetMonthlyComparison compares spending between two months
-func (r *PostgresReceiptRepository) GetMonthlyComparison(ctx context.Context, month1, month2 string) (*domain.MonthlyComparison, error) {
+func (r *PostgresReceiptRepository) GetMonthlyComparison(ctx context.Context, userID string, month1, month2 string) (*domain.MonthlyComparison, error) {
 	// Validate month format (YYYY-MM)
 	for _, month := range []string{month1, month2} {
 		if _, err := time.Parse("2006-01", month); err != nil {
@@ -493,8 +524,8 @@ func (r *PostgresReceiptRepository) GetMonthlyComparison(ctx context.Context, mo
 	err := r.db.QueryRow(ctx, `
 		SELECT COALESCE(SUM(total), 0)
 		FROM receipts
-		WHERE TO_CHAR(date, 'YYYY-MM') = $1
-	`, month1).Scan(&result.Month1Total)
+		WHERE TO_CHAR(date, 'YYYY-MM') = $1 AND user_id = $2
+	`, month1, userID).Scan(&result.Month1Total)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get month1 total: %w", err)
 	}
@@ -503,8 +534,8 @@ func (r *PostgresReceiptRepository) GetMonthlyComparison(ctx context.Context, mo
 	err = r.db.QueryRow(ctx, `
 		SELECT COALESCE(SUM(total), 0)
 		FROM receipts
-		WHERE TO_CHAR(date, 'YYYY-MM') = $1
-	`, month2).Scan(&result.Month2Total)
+		WHERE TO_CHAR(date, 'YYYY-MM') = $1 AND user_id = $2
+	`, month2, userID).Scan(&result.Month2Total)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get month2 total: %w", err)
 	}
@@ -527,7 +558,7 @@ func (r *PostgresReceiptRepository) GetMonthlyComparison(ctx context.Context, mo
 				COALESCE(SUM(ri.qty * ri.price), 0) as amount
 			FROM receipt_items ri
 			JOIN receipts r ON ri.receipt_id = r.id
-			WHERE TO_CHAR(r.date, 'YYYY-MM') = $1
+			WHERE TO_CHAR(r.date, 'YYYY-MM') = $1 AND r.user_id = $3
 			GROUP BY ri.category
 			HAVING ri.category IS NOT NULL
 		),
@@ -537,7 +568,7 @@ func (r *PostgresReceiptRepository) GetMonthlyComparison(ctx context.Context, mo
 				COALESCE(SUM(ri.qty * ri.price), 0) as amount
 			FROM receipt_items ri
 			JOIN receipts r ON ri.receipt_id = r.id
-			WHERE TO_CHAR(r.date, 'YYYY-MM') = $2
+			WHERE TO_CHAR(r.date, 'YYYY-MM') = $2 AND r.user_id = $3
 			GROUP BY ri.category
 			HAVING ri.category IS NOT NULL
 		),
@@ -556,7 +587,7 @@ func (r *PostgresReceiptRepository) GetMonthlyComparison(ctx context.Context, mo
 		LEFT JOIN month1_categories m1 ON ac.category = m1.category
 		LEFT JOIN month2_categories m2 ON ac.category = m2.category
 		ORDER BY GREATEST(COALESCE(m1.amount, 0), COALESCE(m2.amount, 0)) DESC
-	`, month1, month2)
+	`, month1, month2, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query category comparison: %w", err)
 	}

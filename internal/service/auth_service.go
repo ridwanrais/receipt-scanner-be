@@ -141,37 +141,69 @@ func (s *authService) HandleGoogleCallback(ctx context.Context, code string) (*A
 	var user *domain.User
 
 	if err != nil {
-		// New user - create user and OAuth provider
-		user = &domain.User{
-			Email:         googleUser.Email,
-			Name:          googleUser.Name,
-			PictureURL:    googleUser.Picture,
-			EmailVerified: googleUser.VerifiedEmail,
-			IsActive:      true,
-		}
+		// OAuth provider doesn't exist - check if user with this email already exists
+		existingUser, emailErr := s.userRepo.GetUserByEmail(ctx, googleUser.Email)
 
-		if err := s.userRepo.CreateUser(ctx, user); err != nil {
-			return nil, fmt.Errorf("failed to create user: %w", err)
-		}
+		if emailErr == nil && existingUser != nil {
+			// User exists (registered via email/password) - link Google OAuth to existing account
+			user = existingUser
 
-		// Create OAuth provider record
-		provider := &domain.OAuthProvider{
-			UserID:         user.ID,
-			Provider:       "google",
-			ProviderUserID: googleUser.ID,
-			ProviderEmail:  googleUser.Email,
-			ProviderData: map[string]interface{}{
-				"locale":      googleUser.Locale,
-				"given_name":  googleUser.GivenName,
-				"family_name": googleUser.FamilyName,
-			},
-		}
+			// Update user info from Google
+			user.PictureURL = googleUser.Picture
+			user.EmailVerified = googleUser.VerifiedEmail
+			if err := s.userRepo.UpdateUser(ctx, user); err != nil {
+				return nil, fmt.Errorf("failed to update user: %w", err)
+			}
 
-		if err := s.userRepo.CreateOAuthProvider(ctx, provider); err != nil {
-			return nil, fmt.Errorf("failed to create OAuth provider: %w", err)
+			// Create OAuth provider record to link Google to existing user
+			provider := &domain.OAuthProvider{
+				UserID:         user.ID,
+				Provider:       "google",
+				ProviderUserID: googleUser.ID,
+				ProviderEmail:  googleUser.Email,
+				ProviderData: map[string]interface{}{
+					"locale":      googleUser.Locale,
+					"given_name":  googleUser.GivenName,
+					"family_name": googleUser.FamilyName,
+				},
+			}
+
+			if err := s.userRepo.CreateOAuthProvider(ctx, provider); err != nil {
+				return nil, fmt.Errorf("failed to link OAuth provider: %w", err)
+			}
+		} else {
+			// New user - create user and OAuth provider
+			user = &domain.User{
+				Email:         googleUser.Email,
+				Name:          googleUser.Name,
+				PictureURL:    googleUser.Picture,
+				EmailVerified: googleUser.VerifiedEmail,
+				IsActive:      true,
+			}
+
+			if err := s.userRepo.CreateUser(ctx, user); err != nil {
+				return nil, fmt.Errorf("failed to create user: %w", err)
+			}
+
+			// Create OAuth provider record
+			provider := &domain.OAuthProvider{
+				UserID:         user.ID,
+				Provider:       "google",
+				ProviderUserID: googleUser.ID,
+				ProviderEmail:  googleUser.Email,
+				ProviderData: map[string]interface{}{
+					"locale":      googleUser.Locale,
+					"given_name":  googleUser.GivenName,
+					"family_name": googleUser.FamilyName,
+				},
+			}
+
+			if err := s.userRepo.CreateOAuthProvider(ctx, provider); err != nil {
+				return nil, fmt.Errorf("failed to create OAuth provider: %w", err)
+			}
 		}
 	} else {
-		// Existing user - get user details
+		// Existing OAuth user - get user details
 		user, err = s.userRepo.GetUserByID(ctx, oauthProvider.UserID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user: %w", err)

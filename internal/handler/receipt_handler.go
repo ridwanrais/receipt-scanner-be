@@ -202,6 +202,13 @@ func (h *ReceiptHandler) CreateReceipt(c *gin.Context) {
 // @Failure 500 {object} model.ErrorResponse "Internal server error"
 // @Router /v1/receipts [get]
 func (h *ReceiptHandler) GetReceipts(c *gin.Context) {
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		respondUnauthorized(c, "User not authenticated")
+		return
+	}
+
 	// Parse query parameters
 	filter, err := parseReceiptFilter(c)
 	if err != nil {
@@ -217,6 +224,9 @@ func (h *ReceiptHandler) GetReceipts(c *gin.Context) {
 		})
 		return
 	}
+
+	// Set user ID filter to only return receipts for the authenticated user
+	filter.UserID = userID.(string)
 
 	// Get receipts
 	paginatedReceipts, err := h.receiptService.ListReceipts(c.Request.Context(), filter)
@@ -401,11 +411,18 @@ func (h *ReceiptHandler) GetReceiptItems(c *gin.Context) {
 // @Failure 500 {object} model.ErrorResponse "Internal server error"
 // @Router /v1/dashboard/summary [get]
 func (h *ReceiptHandler) GetDashboardSummary(c *gin.Context) {
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		respondUnauthorized(c, "User not authenticated")
+		return
+	}
+
 	// Parse query parameters
 	startDate, endDate := parseDateRange(c)
 
 	// Get dashboard summary
-	summary, err := h.receiptService.GetDashboardSummary(c.Request.Context(), startDate, endDate)
+	summary, err := h.receiptService.GetDashboardSummary(c.Request.Context(), userID.(string), startDate, endDate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "500",
@@ -421,6 +438,13 @@ func (h *ReceiptHandler) GetDashboardSummary(c *gin.Context) {
 
 // GetSpendingTrends handles the GET /dashboard/spending-trends endpoint
 func (h *ReceiptHandler) GetSpendingTrends(c *gin.Context) {
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		respondUnauthorized(c, "User not authenticated")
+		return
+	}
+
 	// Parse query parameters
 	period := c.DefaultQuery("period", "monthly")
 	startDate, endDate := parseDateRange(c)
@@ -447,7 +471,7 @@ func (h *ReceiptHandler) GetSpendingTrends(c *gin.Context) {
 	}
 
 	// Get spending trends
-	trends, err := h.receiptService.GetSpendingTrends(c.Request.Context(), period, startDate, endDate)
+	trends, err := h.receiptService.GetSpendingTrends(c.Request.Context(), userID.(string), period, startDate, endDate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "500",
@@ -463,11 +487,18 @@ func (h *ReceiptHandler) GetSpendingTrends(c *gin.Context) {
 
 // GetSpendingByCategory handles the GET /insights/spending-by-category endpoint
 func (h *ReceiptHandler) GetSpendingByCategory(c *gin.Context) {
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		respondUnauthorized(c, "User not authenticated")
+		return
+	}
+
 	// Parse query parameters
 	startDate, endDate := parseDateRange(c)
 
 	// Get spending by category
-	categorySpending, err := h.receiptService.GetSpendingByCategory(c.Request.Context(), startDate, endDate)
+	categorySpending, err := h.receiptService.GetSpendingByCategory(c.Request.Context(), userID.(string), startDate, endDate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "500",
@@ -483,6 +514,13 @@ func (h *ReceiptHandler) GetSpendingByCategory(c *gin.Context) {
 
 // GetMerchantFrequency handles the GET /insights/merchant-frequency endpoint
 func (h *ReceiptHandler) GetMerchantFrequency(c *gin.Context) {
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		respondUnauthorized(c, "User not authenticated")
+		return
+	}
+
 	// Parse query parameters
 	startDate, endDate := parseDateRange(c)
 
@@ -497,7 +535,7 @@ func (h *ReceiptHandler) GetMerchantFrequency(c *gin.Context) {
 	}
 
 	// Get merchant frequency
-	merchantFrequency, err := h.receiptService.GetMerchantFrequency(c.Request.Context(), startDate, endDate, limit)
+	merchantFrequency, err := h.receiptService.GetMerchantFrequency(c.Request.Context(), userID.(string), startDate, endDate, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "500",
@@ -513,6 +551,13 @@ func (h *ReceiptHandler) GetMerchantFrequency(c *gin.Context) {
 
 // GetMonthlyComparison handles the GET /insights/monthly-comparison endpoint
 func (h *ReceiptHandler) GetMonthlyComparison(c *gin.Context) {
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		respondUnauthorized(c, "User not authenticated")
+		return
+	}
+
 	// Parse query parameters
 	month1 := c.Query("month1")
 	month2 := c.Query("month2")
@@ -533,7 +578,7 @@ func (h *ReceiptHandler) GetMonthlyComparison(c *gin.Context) {
 	}
 
 	// Get monthly comparison
-	comparison, err := h.receiptService.GetMonthlyComparison(c.Request.Context(), month1, month2)
+	comparison, err := h.receiptService.GetMonthlyComparison(c.Request.Context(), userID.(string), month1, month2)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "500",

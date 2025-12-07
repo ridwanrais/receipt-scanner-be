@@ -74,6 +74,7 @@ func (fd FlexibleDate) MarshalJSON() ([]byte, error) {
 
 // ReceiptFilter represents filters for querying receipts
 type ReceiptFilter struct {
+	UserID    string
 	StartDate *time.Time
 	EndDate   *time.Time
 	Merchant  string
