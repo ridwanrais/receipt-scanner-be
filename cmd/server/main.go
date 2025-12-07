@@ -10,6 +10,7 @@ import (
 
 	_ "github.com/ridwanfathin/invoice-processor-service/docs"
 	"github.com/ridwanfathin/invoice-processor-service/internal/config"
+	"github.com/ridwanfathin/invoice-processor-service/internal/currency"
 	"github.com/ridwanfathin/invoice-processor-service/internal/database"
 	"github.com/ridwanfathin/invoice-processor-service/internal/handler"
 	"github.com/ridwanfathin/invoice-processor-service/internal/middleware"
@@ -139,10 +140,16 @@ func main() {
 		JWTRefreshExpiration:  cfg.JWTRefreshExpiration,
 	})
 
+	// Initialize currency client
+	log.Println("Initializing currency client...")
+	currencyClient := currency.NewClient()
+
 	// Initialize handlers
 	log.Println("Initializing API handlers...")
 	receiptHandler := handler.NewReceiptHandler(receiptService)
 	authHandler := handler.NewAuthHandler(authService, cfg.FrontendURL)
+	currencyHandler := handler.NewCurrencyHandler(currencyClient)
+	analyticsHandler := handler.NewAnalyticsHandler(receiptRepo, currencyClient)
 
 	// Create and configure server
 	log.Println("Configuring server...")
@@ -158,6 +165,8 @@ func main() {
 	// Register API routes
 	receiptHandler.RegisterRoutes(appServer.GetRouter(), authMiddleware)
 	authHandler.RegisterRoutes(appServer.GetRouter(), authMiddleware)
+	currencyHandler.RegisterCurrencyRoutes(appServer.GetRouter().Group("/v1"))
+	analyticsHandler.RegisterAnalyticsRoutes(appServer.GetRouter().Group("/v1"), authMiddleware)
 
 	// Start server in a goroutine so we can handle shutdown gracefully
 	serverErr := make(chan error, 1)

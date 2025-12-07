@@ -2,9 +2,17 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/ridwanfathin/invoice-processor-service/internal/domain"
 )
+
+// ReceiptFilterWithItems is a filter for fetching receipts with items
+type ReceiptFilterWithItems struct {
+	UserID    string
+	StartDate *time.Time
+	EndDate   *time.Time
+}
 
 // ReceiptRepository defines the interface for receipt data operations
 type ReceiptRepository interface {
@@ -17,6 +25,7 @@ type ReceiptRepository interface {
 	// Receipt querying operations
 	ListReceipts(ctx context.Context, filter domain.ReceiptFilter) (*domain.PaginatedReceipts, error)
 	GetReceiptItems(ctx context.Context, receiptID string) ([]domain.ReceiptItem, error)
+	GetReceiptsWithItems(ctx context.Context, filter ReceiptFilterWithItems) ([]domain.Receipt, error)
 
 	// Dashboard and insights operations
 	GetDashboardSummary(ctx context.Context, userID string, startDate, endDate *string) (*domain.DashboardSummary, error)

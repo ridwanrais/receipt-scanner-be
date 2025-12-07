@@ -389,4 +389,111 @@ func (r *PostgresReceiptRepository) GetReceiptItems(ctx context.Context, receipt
 	return items, nil
 }
 
+// GetReceiptsWithItems retrieves all receipts with their items for a user
+func (r *PostgresReceiptRepository) GetReceiptsWithItems(ctx context.Context, filter ReceiptFilterWithItems) ([]domain.Receipt, error) {
+	// Build query conditions
+	conditions := []string{"r.user_id = $1"}
+	args := []interface{}{filter.UserID}
+	argCount := 2
+
+	if filter.StartDate != nil {
+		conditions = append(conditions, fmt.Sprintf("r.date >= $%d", argCount))
+		args = append(args, filter.StartDate)
+		argCount++
+	}
+	if filter.EndDate != nil {
+		conditions = append(conditions, fmt.Sprintf("r.date <= $%d", argCount))
+		args = append(args, filter.EndDate)
+		argCount++
+	}
+
+	whereClause := "WHERE " + strings.Join(conditions, " AND ")
+
+	// Query receipts
+	receiptRows, err := r.db.Query(ctx, fmt.Sprintf(`
+		SELECT r.id, r.user_id, r.merchant, r.date, r.total, r.tax, r.subtotal, r.image_url, r.receipt_url, r.created_at, r.updated_at
+		FROM receipts r
+		%s
+		ORDER BY r.date DESC
+	`, whereClause), args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query receipts: %w", err)
+	}
+	defer receiptRows.Close()
+
+	// Parse receipts
+	receipts := []domain.Receipt{}
+	receiptIDs := []string{}
+
+	for receiptRows.Next() {
+		var receipt domain.Receipt
+		var imageURL, receiptURL *string
+
+		if err := receiptRows.Scan(
+			&receipt.ID, &receipt.UserID, &receipt.Merchant, &receipt.Date.Time,
+			&receipt.Total, &receipt.Tax, &receipt.Subtotal,
+			&imageURL, &receiptURL, &receipt.CreatedAt, &receipt.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan receipt: %w", err)
+		}
+
+		if imageURL != nil {
+			receipt.ImageURL = *imageURL
+		}
+		if receiptURL != nil {
+			receipt.ReceiptURL = *receiptURL
+		}
+
+		receipt.Items = []domain.ReceiptItem{}
+		receipts = append(receipts, receipt)
+		receiptIDs = append(receiptIDs, receipt.ID)
+	}
+
+	if err := receiptRows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating receipts: %w", err)
+	}
+
+	if len(receiptIDs) == 0 {
+		return receipts, nil
+	}
+
+	// Query all items for these receipts
+	itemRows, err := r.db.Query(ctx, `
+		SELECT receipt_id, id, name, qty, price, COALESCE(currency, 'USD'), COALESCE(category, '')
+		FROM receipt_items
+		WHERE receipt_id = ANY($1)
+		ORDER BY receipt_id, id
+	`, receiptIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query receipt items: %w", err)
+	}
+	defer itemRows.Close()
+
+	// Create a map for quick lookup
+	receiptMap := make(map[string]int)
+	for i, receipt := range receipts {
+		receiptMap[receipt.ID] = i
+	}
+
+	// Assign items to receipts
+	for itemRows.Next() {
+		var receiptID string
+		var item domain.ReceiptItem
+
+		if err := itemRows.Scan(&receiptID, &item.ID, &item.Name, &item.Quantity, &item.Price, &item.Currency, &item.Category); err != nil {
+			return nil, fmt.Errorf("failed to scan receipt item: %w", err)
+		}
+
+		if idx, ok := receiptMap[receiptID]; ok {
+			receipts[idx].Items = append(receipts[idx].Items, item)
+		}
+	}
+
+	if err := itemRows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating receipt items: %w", err)
+	}
+
+	return receipts, nil
+}
+
 // The remaining methods will be implemented in separate files for better organization
