@@ -15,6 +15,7 @@ const (
 	StatusBadRequest          = http.StatusBadRequest
 	StatusUnauthorized        = http.StatusUnauthorized
 	StatusNotFound            = http.StatusNotFound
+	StatusConflict            = http.StatusConflict
 	StatusUnprocessableEntity = http.StatusUnprocessableEntity
 	StatusInternalServerError = http.StatusInternalServerError
 )
@@ -54,6 +55,11 @@ func respondUnauthorized(c *gin.Context, message string, details ...model.ErrorD
 // respondNotFound sends a 404 Not Found response
 func respondNotFound(c *gin.Context, message string) {
 	respondWithError(c, StatusNotFound, message)
+}
+
+// respondConflict sends a 409 Conflict response
+func respondConflict(c *gin.Context, message string) {
+	respondWithError(c, StatusConflict, message)
 }
 
 // respondUnprocessableEntity sends a 422 Unprocessable Entity response

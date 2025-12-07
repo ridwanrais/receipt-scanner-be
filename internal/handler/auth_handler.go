@@ -223,10 +223,86 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	})
 }
 
+// Register handles user registration with email and password
+// @Summary Register a new user
+// @Description Create a new user account with email and password
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body RegisterRequest true "Registration details"
+// @Success 201 {object} service.AuthResponse "Registration successful"
+// @Failure 400 {object} model.ErrorResponse "Bad request"
+// @Failure 409 {object} model.ErrorResponse "User already exists"
+// @Failure 500 {object} model.ErrorResponse "Internal server error"
+// @Router /v1/auth/register [post]
+func (h *AuthHandler) Register(c *gin.Context) {
+	var req RegisterRequest
+	if err := bindJSON(c, &req); err != nil {
+		respondBadRequest(c, "Invalid request body")
+		return
+	}
+
+	// Register user
+	authResponse, err := h.authService.Register(c.Request.Context(), req.Email, req.Password, req.Name)
+	if err != nil {
+		if err == service.ErrUserAlreadyExists {
+			respondConflict(c, "User with this email already exists")
+			return
+		}
+		logError(c, "registration_failed", err, map[string]interface{}{
+			"email": req.Email,
+		})
+		respondInternalServerError(c, "Failed to register user")
+		return
+	}
+
+	respondCreated(c, authResponse)
+}
+
+// Login handles user login with email and password
+// @Summary Login with email and password
+// @Description Authenticate a user with email and password
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body LoginRequest true "Login credentials"
+// @Success 200 {object} service.AuthResponse "Login successful"
+// @Failure 400 {object} model.ErrorResponse "Bad request"
+// @Failure 401 {object} model.ErrorResponse "Invalid credentials"
+// @Failure 500 {object} model.ErrorResponse "Internal server error"
+// @Router /v1/auth/login [post]
+func (h *AuthHandler) Login(c *gin.Context) {
+	var req LoginRequest
+	if err := bindJSON(c, &req); err != nil {
+		respondBadRequest(c, "Invalid request body")
+		return
+	}
+
+	// Login user
+	authResponse, err := h.authService.Login(c.Request.Context(), req.Email, req.Password)
+	if err != nil {
+		if err == service.ErrInvalidCredentials {
+			respondUnauthorized(c, "Invalid email or password")
+			return
+		}
+		logError(c, "login_failed", err, map[string]interface{}{
+			"email": req.Email,
+		})
+		respondInternalServerError(c, "Failed to login")
+		return
+	}
+
+	respondOK(c, authResponse)
+}
+
 // RegisterRoutes registers auth routes
 func (h *AuthHandler) RegisterRoutes(router *gin.Engine, authMiddleware gin.HandlerFunc) {
 	auth := router.Group("/v1/auth")
 	{
+		// Email/Password authentication
+		auth.POST("/register", h.Register)
+		auth.POST("/login", h.Login)
+
 		// Web OAuth flow (for future web support)
 		auth.GET("/google/login", h.GoogleLogin)
 		auth.GET("/google/callback", h.GoogleCallback)
@@ -251,6 +327,19 @@ type RefreshTokenRequest struct {
 // MobileAuthRequest represents a mobile authentication request
 type MobileAuthRequest struct {
 	IDToken string `json:"idToken" binding:"required"`
+}
+
+// RegisterRequest represents a registration request
+type RegisterRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=6"`
+	Name     string `json:"name" binding:"required"`
+}
+
+// LoginRequest represents a login request
+type LoginRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
 }
 
 // generateRandomState generates a random state string for OAuth

@@ -9,6 +9,7 @@ type User struct {
 	ID            string    `json:"id"`
 	Email         string    `json:"email"`
 	Name          string    `json:"name"`
+	PasswordHash  string    `json:"-"` // Never expose password hash in JSON
 	PictureURL    string    `json:"pictureUrl,omitempty"`
 	EmailVerified bool      `json:"emailVerified"`
 	IsActive      bool      `json:"isActive"`

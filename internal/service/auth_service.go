@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,8 +12,16 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/ridwanfathin/invoice-processor-service/internal/domain"
 	"github.com/ridwanfathin/invoice-processor-service/internal/repository"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+)
+
+// Common errors
+var (
+	ErrUserAlreadyExists  = errors.New("user with this email already exists")
+	ErrInvalidCredentials = errors.New("invalid email or password")
+	ErrUserNotFound       = errors.New("user not found")
 )
 
 // AuthService handles authentication operations
@@ -23,6 +32,10 @@ type AuthService interface {
 
 	// Mobile authentication
 	HandleGoogleMobileAuth(ctx context.Context, idToken string) (*AuthResponse, error)
+
+	// Email/Password authentication
+	Register(ctx context.Context, email, password, name string) (*AuthResponse, error)
+	Login(ctx context.Context, email, password string) (*AuthResponse, error)
 
 	// JWT operations
 	GenerateTokens(userID string) (*TokenPair, error)
@@ -284,6 +297,79 @@ func (s *authService) HandleGoogleMobileAuth(ctx context.Context, idToken string
 				return nil, fmt.Errorf("failed to update user: %w", err)
 			}
 		}
+	}
+
+	// Generate JWT tokens
+	tokens, err := s.GenerateTokens(user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate tokens: %w", err)
+	}
+
+	return &AuthResponse{
+		User:         user,
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+		ExpiresIn:    tokens.ExpiresIn,
+	}, nil
+}
+
+// Register creates a new user with email and password
+func (s *authService) Register(ctx context.Context, email, password, name string) (*AuthResponse, error) {
+	// Check if user already exists
+	existingUser, err := s.userRepo.GetUserByEmail(ctx, email)
+	if err == nil && existingUser != nil {
+		return nil, ErrUserAlreadyExists
+	}
+
+	// Hash the password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Create new user
+	user := &domain.User{
+		Email:         email,
+		Name:          name,
+		PasswordHash:  string(hashedPassword),
+		EmailVerified: false,
+		IsActive:      true,
+	}
+
+	if err := s.userRepo.CreateUserWithPassword(ctx, user); err != nil {
+		return nil, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// Generate JWT tokens
+	tokens, err := s.GenerateTokens(user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate tokens: %w", err)
+	}
+
+	return &AuthResponse{
+		User:         user,
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+		ExpiresIn:    tokens.ExpiresIn,
+	}, nil
+}
+
+// Login authenticates a user with email and password
+func (s *authService) Login(ctx context.Context, email, password string) (*AuthResponse, error) {
+	// Get user by email with password hash
+	user, err := s.userRepo.GetUserByEmailWithPassword(ctx, email)
+	if err != nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	// Check if user has a password (might be OAuth-only user)
+	if user.PasswordHash == "" {
+		return nil, ErrInvalidCredentials
+	}
+
+	// Verify password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		return nil, ErrInvalidCredentials
 	}
 
 	// Generate JWT tokens

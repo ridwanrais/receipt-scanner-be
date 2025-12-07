@@ -10,8 +10,10 @@ import (
 type UserRepository interface {
 	// User operations
 	CreateUser(ctx context.Context, user *domain.User) error
+	CreateUserWithPassword(ctx context.Context, user *domain.User) error
 	GetUserByID(ctx context.Context, userID string) (*domain.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
+	GetUserByEmailWithPassword(ctx context.Context, email string) (*domain.User, error)
 	UpdateUser(ctx context.Context, user *domain.User) error
 
 	// OAuth provider operations

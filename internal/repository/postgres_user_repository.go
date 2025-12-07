@@ -19,7 +19,7 @@ func NewPostgresUserRepository(db *pgxpool.Pool) UserRepository {
 	return &PostgresUserRepository{db: db}
 }
 
-// CreateUser creates a new user in the database
+// CreateUser creates a new user in the database (for OAuth users without password)
 func (r *PostgresUserRepository) CreateUser(ctx context.Context, user *domain.User) error {
 	query := `
 		INSERT INTO users (email, name, picture_url, email_verified, is_active)
@@ -39,6 +39,32 @@ func (r *PostgresUserRepository) CreateUser(ctx context.Context, user *domain.Us
 
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
+	}
+
+	return nil
+}
+
+// CreateUserWithPassword creates a new user with password hash in the database
+func (r *PostgresUserRepository) CreateUserWithPassword(ctx context.Context, user *domain.User) error {
+	query := `
+		INSERT INTO users (email, name, password_hash, picture_url, email_verified, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, created_at, updated_at
+	`
+
+	err := r.db.QueryRow(
+		ctx,
+		query,
+		user.Email,
+		user.Name,
+		user.PasswordHash,
+		user.PictureURL,
+		user.EmailVerified,
+		user.IsActive,
+	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+
+	if err != nil {
+		return fmt.Errorf("failed to create user with password: %w", err)
 	}
 
 	return nil
@@ -93,6 +119,34 @@ func (r *PostgresUserRepository) GetUserByEmail(ctx context.Context, email strin
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user by email: %w", err)
+	}
+
+	return user, nil
+}
+
+// GetUserByEmailWithPassword retrieves a user by their email including password hash
+func (r *PostgresUserRepository) GetUserByEmailWithPassword(ctx context.Context, email string) (*domain.User, error) {
+	query := `
+		SELECT id, email, name, COALESCE(password_hash, ''), picture_url, email_verified, is_active, created_at, updated_at
+		FROM users
+		WHERE email = $1
+	`
+
+	user := &domain.User{}
+	err := r.db.QueryRow(ctx, query, email).Scan(
+		&user.ID,
+		&user.Email,
+		&user.Name,
+		&user.PasswordHash,
+		&user.PictureURL,
+		&user.EmailVerified,
+		&user.IsActive,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user by email with password: %w", err)
 	}
 
 	return user, nil
