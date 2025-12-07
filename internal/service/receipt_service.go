@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/ridwanfathin/invoice-processor-service/internal/domain"
+	"github.com/ridwanfathin/invoice-processor-service/internal/imageutil"
 	"github.com/ridwanfathin/invoice-processor-service/internal/mlxclient"
 	"github.com/ridwanfathin/invoice-processor-service/internal/openrouter"
 	"github.com/ridwanfathin/invoice-processor-service/internal/repository"
@@ -88,16 +90,27 @@ func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte, 
 		}
 	}
 
+	// Resize image before processing to reduce memory usage and upload size
+	originalSize := len(imageData)
+	resizedData, resizeErr := imageutil.ResizeImage(imageData, nil) // Uses default 1024px max
+	if resizeErr != nil {
+		log.Printf("Warning: failed to resize image, using original: %v", resizeErr)
+		resizedData = imageData
+	} else if len(resizedData) < originalSize {
+		log.Printf("Image resized: %d bytes -> %d bytes (%.1f%% reduction)",
+			originalSize, len(resizedData), float64(originalSize-len(resizedData))/float64(originalSize)*100)
+	}
+
 	// Extract invoice data using MLX or OpenRouter
 	var invoiceData *domain.Invoice
 	var err error
 	var receiptURL string
 
 	if s.useMLXService && s.mlxClient != nil && s.s3Uploader != nil {
-		// Upload image to S3 first
+		// Upload resized image to S3 first
 		timestamp := time.Now().UnixNano()
 		filename := fmt.Sprintf("invoice_%d.png", timestamp)
-		imageURL, uploadErr := s.s3Uploader.UploadImage(imageData, filename)
+		imageURL, uploadErr := s.s3Uploader.UploadImage(resizedData, filename)
 		if uploadErr != nil {
 			return nil, &ReceiptServiceError{
 				Op:  "upload_image_to_s3",
@@ -117,11 +130,11 @@ func (s *ReceiptServiceImpl) ScanReceipt(ctx context.Context, imageData []byte, 
 			}
 		}
 	} else {
-		// Upload image to S3 for receipt URL storage
+		// Upload resized image to S3 for receipt URL storage
 		if s.s3Uploader != nil {
 			timestamp := time.Now().UnixNano()
 			filename := fmt.Sprintf("invoice_%d.png", timestamp)
-			imageURL, uploadErr := s.s3Uploader.UploadImage(imageData, filename)
+			imageURL, uploadErr := s.s3Uploader.UploadImage(resizedData, filename)
 			if uploadErr == nil {
 				receiptURL = imageURL
 			}

@@ -1,5 +1,17 @@
 basePath: /
 definitions:
+  currency.ExchangeRates:
+    properties:
+      base:
+        type: string
+      date:
+        type: string
+      rates:
+        additionalProperties:
+          format: float64
+          type: number
+        type: object
+    type: object
   domain.FlexibleDate:
     properties:
       time.Time:
@@ -68,6 +80,34 @@ definitions:
       updatedAt:
         type: string
     type: object
+  handler.AnalyticsSummary:
+    properties:
+      average:
+        type: number
+      byCategory:
+        items:
+          $ref: '#/definitions/handler.CategoryAmount'
+        type: array
+      byPeriod:
+        items:
+          $ref: '#/definitions/handler.PeriodAmount'
+        type: array
+      currency:
+        type: string
+      highest:
+        type: number
+      receiptCount:
+        type: integer
+      totalSpent:
+        type: number
+    type: object
+  handler.CategoryAmount:
+    properties:
+      amount:
+        type: number
+      category:
+        type: string
+    type: object
   handler.LoginRequest:
     properties:
       email:
@@ -84,6 +124,15 @@ definitions:
         type: string
     required:
     - idToken
+    type: object
+  handler.PeriodAmount:
+    properties:
+      amount:
+        type: number
+      count:
+        type: integer
+      period:
+        type: string
     type: object
   handler.RefreshTokenRequest:
     properties:
@@ -252,6 +301,46 @@ info:
   title: Receipt Scanner API
   version: "1.0"
 paths:
+  /v1/analytics:
+    get:
+      consumes:
+      - application/json
+      description: Get spending analytics with all amounts converted to target currency
+      parameters:
+      - description: 'Target currency (default: USD)'
+        in: query
+        name: currency
+        type: string
+      - description: 'Period type: weekly, monthly, yearly (default: monthly)'
+        in: query
+        name: period
+        type: string
+      - description: Start date filter (YYYY-MM-DD)
+        in: query
+        name: startDate
+        type: string
+      - description: End date filter (YYYY-MM-DD)
+        in: query
+        name: endDate
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Analytics summary
+          schema:
+            $ref: '#/definitions/handler.AnalyticsSummary'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Get analytics with currency conversion
+      tags:
+      - analytics
   /v1/auth/google/callback:
     get:
       consumes:
@@ -469,6 +558,90 @@ paths:
       summary: Register a new user
       tags:
       - auth
+  /v1/currency/convert:
+    get:
+      consumes:
+      - application/json
+      description: Convert an amount from one currency to another
+      parameters:
+      - description: Amount to convert
+        in: query
+        name: amount
+        required: true
+        type: number
+      - description: Source currency
+        in: query
+        name: from
+        required: true
+        type: string
+      - description: Target currency
+        in: query
+        name: to
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Conversion result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Convert currency
+      tags:
+      - currency
+  /v1/currency/rates:
+    get:
+      consumes:
+      - application/json
+      description: Get latest exchange rates for a base currency
+      parameters:
+      - description: 'Base currency (default: USD)'
+        in: query
+        name: base
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Exchange rates
+          schema:
+            $ref: '#/definitions/currency.ExchangeRates'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Get exchange rates
+      tags:
+      - currency
+  /v1/currency/supported:
+    get:
+      consumes:
+      - application/json
+      description: Get list of all supported currencies
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of currencies
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Get supported currencies
+      tags:
+      - currency
   /v1/dashboard/summary:
     get:
       consumes:

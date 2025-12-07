@@ -23,6 +23,67 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/v1/analytics": {
+            "get": {
+                "description": "Get spending analytics with all amounts converted to target currency",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "analytics"
+                ],
+                "summary": "Get analytics with currency conversion",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Target currency (default: USD)",
+                        "name": "currency",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Period type: weekly, monthly, yearly (default: monthly)",
+                        "name": "period",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start date filter (YYYY-MM-DD)",
+                        "name": "startDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date filter (YYYY-MM-DD)",
+                        "name": "endDate",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Analytics summary",
+                        "schema": {
+                            "$ref": "#/definitions/handler.AnalyticsSummary"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/auth/google/callback": {
             "get": {
                 "description": "Processes Google OAuth callback and returns JWT tokens",
@@ -345,6 +406,132 @@ const docTemplate = `{
                         "description": "User already exists",
                         "schema": {
                             "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/currency/convert": {
+            "get": {
+                "description": "Convert an amount from one currency to another",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "currency"
+                ],
+                "summary": "Convert currency",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Amount to convert",
+                        "name": "amount",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Source currency",
+                        "name": "from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Target currency",
+                        "name": "to",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Conversion result",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/currency/rates": {
+            "get": {
+                "description": "Get latest exchange rates for a base currency",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "currency"
+                ],
+                "summary": "Get exchange rates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Base currency (default: USD)",
+                        "name": "base",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Exchange rates",
+                        "schema": {
+                            "$ref": "#/definitions/currency.ExchangeRates"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/currency/supported": {
+            "get": {
+                "description": "Get list of all supported currencies",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "currency"
+                ],
+                "summary": "Get supported currencies",
+                "responses": {
+                    "200": {
+                        "description": "List of currencies",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
@@ -766,6 +953,24 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "currency.ExchangeRates": {
+            "type": "object",
+            "properties": {
+                "base": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "rates": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number",
+                        "format": "float64"
+                    }
+                }
+            }
+        },
         "domain.FlexibleDate": {
             "type": "object",
             "properties": {
@@ -870,6 +1075,49 @@ const docTemplate = `{
                 }
             }
         },
+        "handler.AnalyticsSummary": {
+            "type": "object",
+            "properties": {
+                "average": {
+                    "type": "number"
+                },
+                "byCategory": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handler.CategoryAmount"
+                    }
+                },
+                "byPeriod": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handler.PeriodAmount"
+                    }
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "highest": {
+                    "type": "number"
+                },
+                "receiptCount": {
+                    "type": "integer"
+                },
+                "totalSpent": {
+                    "type": "number"
+                }
+            }
+        },
+        "handler.CategoryAmount": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "category": {
+                    "type": "string"
+                }
+            }
+        },
         "handler.LoginRequest": {
             "type": "object",
             "required": [
@@ -892,6 +1140,20 @@ const docTemplate = `{
             ],
             "properties": {
                 "idToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.PeriodAmount": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "period": {
                     "type": "string"
                 }
             }
